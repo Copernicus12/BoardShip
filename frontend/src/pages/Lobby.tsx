@@ -1,60 +1,124 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageContainer from "../components/PageContainer";
+import api from '../utils/api';
+import useAuth from '../state/auth';
+import { Client as StompClient } from '@stomp/stompjs';
+import type { IMessage } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 
-// Mock data for game rooms - replace with real API calls later
-const mockRooms = [
-    {
-        id: 1,
-        name: 'Quick Match #1',
-        host: 'Player_123',
-        mode: 'Classic',
-        players: '1/2',
-        status: 'waiting'
-    },
-    {
-        id: 2,
-        name: 'Pro League Battle',
-        host: 'ProGamer99',
-        mode: 'Ranked',
-        players: '1/2',
-        status: 'waiting'
-    },
-    {
-        id: 3,
-        name: 'Speed Challenge',
-        host: 'FastShooter',
-        mode: 'Speed Battle',
-        players: '2/2',
-        status: 'in-progress'
-    },
-    {
-        id: 4,
-        name: 'Beginners Welcome',
-        host: 'NewCaptain',
-        mode: 'Classic',
-        players: '1/2',
-        status: 'waiting'
-    },
-];
+// Lobby type
+type LobbyItem = {
+    id: string;
+    name: string;
+    hostId?: string;
+    hostName?: string;
+    mode?: string;
+    maxPlayers?: number;
+    currentPlayers?: number;
+    status?: string;
+}
+
+// STOMP endpoint (SockJS) – backend registers /ws
+const WS_ENDPOINT = import.meta.env.DEV ? 'http://localhost:8080/ws' : `${window.location.origin}/ws`;
 
 export default function Lobby() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [gameName, setGameName] = useState('');
     const [gameMode, setGameMode] = useState('classic');
+    const [isCreating, setIsCreating] = useState(false);
+    const [rooms, setRooms] = useState<LobbyItem[]>([]);
     const navigate = useNavigate();
+    const { user } = useAuth();
 
-    const handleCreateGame = () => {
-        // TODO: Implement actual game creation
-        console.log('Creating game:', { gameName, gameMode });
-        setShowCreateModal(false);
-        navigate('/game');
+    useEffect(() => {
+        let client: StompClient | null = null;
+
+        const connect = async () => {
+            try {
+                // initial load
+                const res = await api.get('/api/lobbies');
+                setRooms(res.data);
+
+                client = new StompClient({
+                    webSocketFactory: () => new SockJS(WS_ENDPOINT) as any,
+                    reconnectDelay: 3000,
+                });
+
+                client.onConnect = () => {
+                    client?.subscribe('/topic/lobbies', (msg: IMessage) => {
+                        try {
+                            const payload = JSON.parse(msg.body);
+                            // If server sent a deletion notice: {id, deleted: true}
+                            if (payload && payload.deleted && payload.id) {
+                                const delId: string = payload.id;
+                                setRooms(prev => prev.filter(r => r.id !== delId));
+                                return;
+                            }
+                            // server broadcasts single lobby on create/join; handle both single and array
+                            const updates: LobbyItem[] = Array.isArray(payload) ? payload : [payload];
+                            setRooms(prev => {
+                                const map = new Map(prev.map(r => [r.id, r]));
+                                for (const u of updates) map.set(u.id, u);
+                                return Array.from(map.values());
+                            });
+                        } catch (e) {
+                            console.error('Invalid lobby update', e);
+                        }
+                    });
+                };
+
+                client.activate();
+            } catch (e) {
+                console.error('Failed to connect to lobby updates', e);
+            }
+        };
+
+        connect();
+
+        return () => {
+            try { client?.deactivate(); } catch (e) { /* ignore */ }
+        };
+    }, []);
+
+    const createLobbyOnServer = async () => {
+        setIsCreating(true);
+        try {
+            const payload = {
+                name: gameName,
+                mode: gameMode,
+                hostId: user?.id || null,
+                hostName: user?.username || 'Anonymous',
+                maxPlayers: 2
+            };
+            const res = await api.post('/api/lobbies', payload);
+            const lobby: LobbyItem = res.data;
+            setShowCreateModal(false);
+            navigate(`/game/${lobby.id}`);
+        } catch (e) {
+            console.error('Create failed', e);
+            alert('Failed to create lobby');
+        } finally {
+            setIsCreating(false);
+        }
     };
 
-    const handleJoinGame = (roomId: number) => {
-        // TODO: Implement actual join game logic
-        console.log('Joining room:', roomId);
-        navigate('/game');
+    const handleJoinGame = async (id: string) => {
+        try {
+            const res = await api.patch(`/api/lobbies/${id}/join`);
+            const lobby: LobbyItem = res.data;
+            navigate(`/game/${lobby.id}`);
+        } catch (err: any) {
+            if (err.response?.status === 409) {
+                // show message and refresh list
+                alert(err.response.data || 'Unable to join lobby');
+                const fresh = await api.get('/api/lobbies');
+                setRooms(fresh.data);
+                return;
+            }
+            console.error('Join failed', err);
+            alert('Failed to join lobby');
+        }
     };
 
     return (
@@ -79,17 +143,17 @@ export default function Lobby() {
                     <div className="bg-card border border-accent rounded-lg p-4">
                         <div className="text-sm text-muted mb-1">Available Games</div>
                         <div className="text-2xl font-bold text-neon">
-                            {mockRooms.filter(r => r.status === 'waiting').length}
+                            {rooms.filter(r => r.status === 'waiting').length}
                         </div>
                     </div>
                     <div className="bg-card border border-accent rounded-lg p-4">
                         <div className="text-sm text-muted mb-1">Players Online</div>
-                        <div className="text-2xl font-bold text-neon">342</div>
+                        <div className="text-2xl font-bold text-neon">{rooms.reduce((s, r) => s + (r.currentPlayers ?? 0), 0)}</div>
                     </div>
                     <div className="bg-card border border-accent rounded-lg p-4">
                         <div className="text-sm text-muted mb-1">Games in Progress</div>
                         <div className="text-2xl font-bold text-neon">
-                            {mockRooms.filter(r => r.status === 'in-progress').length}
+                            {rooms.filter(r => r.status === 'in-progress').length}
                         </div>
                     </div>
                 </div>
@@ -99,93 +163,42 @@ export default function Lobby() {
                     <h2 className="text-2xl font-bold text-accent mb-6">Available Rooms</h2>
 
                     <div className="space-y-3">
-                        {mockRooms.map((room) => (
-                            <div
-                                key={room.id}
-                                className="bg-navy border border-accent rounded-lg p-5 hover:border-neon transition-all group flex items-center justify-between"
-                            >
+                        {rooms.map(room => (
+                            <div key={room.id} className="bg-navy border border-accent rounded-lg p-5 hover:border-neon transition-all group flex items-center justify-between">
                                 <div className="flex-1">
                                     <div className="flex items-center gap-3 mb-2">
-                                        <h3 className="text-lg font-semibold text-accent group-hover:text-neon transition">
-                                            {room.name}
-                                        </h3>
-                                        <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                            room.status === 'waiting'
-                                                ? 'bg-green-500/20 text-green-400 border border-green-500/50'
-                                                : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
-                                        }`}>
-                                            {room.status === 'waiting' ? 'WAITING' : 'IN PROGRESS'}
-                                        </span>
+                                        <h3 className="text-lg font-semibold text-accent group-hover:text-neon transition">{room.name}</h3>
+                                        <span className={`px-2 py-1 rounded text-xs font-bold ${room.status === 'waiting' ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'}`}>{room.status === 'waiting' ? 'WAITING' : 'IN PROGRESS'}</span>
                                     </div>
                                     <div className="flex gap-6 text-sm text-muted">
-                                        <div>
-                                            <span className="text-muted">Host: </span>
-                                            <span className="text-accent">{room.host}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted">Mode: </span>
-                                            <span className="text-accent">{room.mode}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-muted">Players: </span>
-                                            <span className="text-accent">{room.players}</span>
-                                        </div>
+                                        <div><span className="text-muted">Host: </span><span className="text-accent">{room.hostName ?? 'Anonymous'}</span></div>
+                                        <div><span className="text-muted">Mode: </span><span className="text-accent">{room.mode ?? ''}</span></div>
+                                        <div><span className="text-muted">Players: </span><span className="text-accent">{(room.currentPlayers ?? 0) + '/' + (room.maxPlayers ?? 0)}</span></div>
                                     </div>
                                 </div>
-
-                                <button
-                                    onClick={() => handleJoinGame(room.id)}
-                                    disabled={room.status === 'in-progress'}
-                                    className={`px-6 py-2 rounded-lg font-semibold transition ${
-                                        room.status === 'waiting'
-                                            ? 'bg-neon text-navy hover:opacity-90'
-                                            : 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                                    }`}
-                                >
-                                    {room.status === 'waiting' ? 'Join' : 'Full'}
-                                </button>
+                                <button disabled={room.status !== 'waiting'} onClick={() => handleJoinGame(room.id)} className={`px-6 py-2 rounded-lg font-semibold transition ${room.status === 'waiting' ? 'bg-neon text-navy hover:opacity-90' : 'bg-gray-600 text-gray-400 cursor-not-allowed'}`}>{room.status === 'waiting' ? 'Join' : 'Full'}</button>
                             </div>
                         ))}
                     </div>
                 </div>
+
             </div>
 
             {/* Create Game Modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
                     <div className="bg-card border border-accent rounded-xl p-8 max-w-md w-full relative">
-                        <button
-                            onClick={() => setShowCreateModal(false)}
-                            className="absolute top-4 right-4 text-muted hover:text-neon text-2xl"
-                        >
-                            ×
-                        </button>
-
+                        <button onClick={() => setShowCreateModal(false)} className="absolute top-4 right-4 text-muted hover:text-neon text-2xl">×</button>
                         <h2 className="text-2xl font-bold text-neon mb-6">Create New Game</h2>
-
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-accent text-sm font-semibold mb-2">
-                                    Game Name
-                                </label>
-                                <input
-                                    type="text"
-                                    value={gameName}
-                                    onChange={(e) => setGameName(e.target.value)}
-                                    placeholder="Enter game name..."
-                                    className="w-full px-4 py-2 bg-navy border border-accent rounded-lg text-accent focus:border-neon outline-none transition"
-                                />
+                                <label className="block text-accent text-sm font-semibold mb-2">Game Name</label>
+                                <input type="text" value={gameName} onChange={(e) => setGameName(e.target.value)} placeholder="Enter game name..." className="w-full px-4 py-2 bg-navy border border-accent rounded-lg text-accent focus:border-neon outline-none transition" />
                             </div>
 
                             <div>
-                                <label className="block text-accent text-sm font-semibold mb-2">
-                                    Game Mode
-                                </label>
-                                <select
-                                    value={gameMode}
-                                    onChange={(e) => setGameMode(e.target.value)}
-                                    className="w-full px-4 py-2 bg-navy border border-accent rounded-lg text-accent focus:border-neon outline-none transition"
-                                >
+                                <label className="block text-accent text-sm font-semibold mb-2">Game Mode</label>
+                                <select value={gameMode} onChange={(e) => setGameMode(e.target.value)} className="w-full px-4 py-2 bg-navy border border-accent rounded-lg text-accent focus:border-neon outline-none transition">
                                     <option value="classic">Classic Mode</option>
                                     <option value="speed">Speed Battle</option>
                                     <option value="ranked">Ranked Mode</option>
@@ -193,24 +206,14 @@ export default function Lobby() {
                             </div>
 
                             <div className="flex gap-3 mt-6">
-                                <button
-                                    onClick={() => setShowCreateModal(false)}
-                                    className="flex-1 px-4 py-2 bg-navy border border-accent text-accent rounded-lg hover:border-neon transition"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleCreateGame}
-                                    disabled={!gameName.trim()}
-                                    className="flex-1 px-4 py-2 bg-neon text-navy font-bold rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                                >
-                                    Create
-                                </button>
+                                <button onClick={() => setShowCreateModal(false)} className="flex-1 px-4 py-2 bg-navy border border-accent text-accent rounded-lg hover:border-neon transition">Cancel</button>
+                                <button onClick={createLobbyOnServer} disabled={!gameName.trim() || isCreating} className="flex-1 px-4 py-2 bg-neon text-navy font-bold rounded-lg hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition">{isCreating ? 'Creating...' : 'Create'}</button>
                             </div>
                         </div>
                     </div>
                 </div>
             )}
+
         </PageContainer>
     )
 }

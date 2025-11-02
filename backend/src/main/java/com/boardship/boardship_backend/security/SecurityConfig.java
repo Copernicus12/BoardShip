@@ -16,6 +16,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import org.springframework.http.HttpMethod;
 
 @Configuration
 @RequiredArgsConstructor
@@ -32,7 +33,17 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Permităm accesul liber la rutele de autentificare
                         .requestMatchers("/api/auth/**").permitAll()
-                        // Toate celelalte rute vor necesita autentificare
+                        // Allow public GET access to list and fetch lobbies so lobby list + WS info are accessible without auth
+                        .requestMatchers(HttpMethod.GET, "/api/lobbies", "/api/lobbies/**").permitAll()
+                        // Allow authenticated PATCH for join
+                        .requestMatchers(HttpMethod.PATCH, "/api/lobbies/*/join").authenticated()
+                        // Allow authenticated POST for create
+                        .requestMatchers(HttpMethod.POST, "/api/lobbies").authenticated()
+                        // Allow authenticated DELETE for lobby deletion
+                        .requestMatchers(HttpMethod.DELETE, "/api/lobbies/*").authenticated()
+                        // Allow SockJS/WebSocket handshake endpoints
+                        .requestMatchers("/ws/**", "/topic/**").permitAll()
+                        // All other routes require authentication
                         .anyRequest().authenticated()
                 )
                 // Add JWT filter before UsernamePasswordAuthenticationFilter
@@ -48,7 +59,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:5173"));
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
 

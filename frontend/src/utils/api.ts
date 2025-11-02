@@ -11,8 +11,11 @@ api.interceptors.request.use((config) => {
 
     const { token } = useAuth.getState()
     if (token) {
-        config.headers = config.headers ?? {}
-        config.headers.Authorization = `Bearer ${token}`
+        // ensure headers object exists and set Authorization; cast to any to avoid Axios header typing issues
+        if (!config.headers) {
+            (config as any).headers = {};
+        }
+        (config.headers as any)['Authorization'] = `Bearer ${token}`;
     }
     return config
 })
