@@ -7,7 +7,7 @@ type User = { id: string; username: string; email: string }
 type AuthState = {
     user: User | null
     token: string | null
-    login: (username: string, password: string) => Promise<void>
+    login: (email: string, password: string) => Promise<void>
     register: (username: string, email: string, password: string) => Promise<void>
     logout: () => void
     fetchMe: () => Promise<void>
@@ -19,14 +19,20 @@ const useAuth = create<AuthState>()(
             user: null,
             token: null,
 
-            async login(username, password) {
-                const { data } = await api.post('/api/auth/login', { username, password })
-                set({ token: data.accessToken })
+            async login(email, password) {
+                // Clear any existing token before login
+                set({ token: null, user: null })
+                const { data } = await api.post('/api/auth/login', { email, password })
+                set({ token: data.token })
                 await get().fetchMe()
             },
 
             async register(username, email, password) {
-                await api.post('/api/auth/register', { username, email, password })
+                // Clear any existing token before register
+                set({ token: null, user: null })
+                const { data } = await api.post('/api/auth/register', { username, email, password })
+                set({ token: data.token })
+                await get().fetchMe()
             },
 
             logout() {

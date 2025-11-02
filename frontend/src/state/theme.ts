@@ -21,4 +21,3 @@ const useTheme = create<ThemeState>()(
 )
 
 export default useTheme
-

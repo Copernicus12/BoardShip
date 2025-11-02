@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+
+    <!-- 🧭 Viewport + Tema -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b1220" />
+
+    <!-- 🎮 Titlu și descriere -->
+    <title>🚢 BoardShip — Multiplayer Battleship Game</title>
+    <meta
+            name="description"
+            content="Play BoardShip — a real-time multiplayer Battleship game built with React, Tailwind CSS & Spring Boot."
+    />
+
+    <!-- 🌐 Open Graph pentru share (Facebook, Discord, etc.) -->
+    <meta property="og:title" content="BoardShip — Multiplayer Battleship Game" />
+    <meta
+            property="og:description"
+            content="Sink enemy ships in style! Join or create real-time matches in BoardShip."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/preview.png" />
+    <meta property="og:url" content="http://localhost:5173" />
+
+    <!-- 🖋️ Font + Favicon -->
+    <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+            rel="stylesheet"
+    />
+
+    <!-- Fix for SockJS global variable -->
+    <script>
+        window.global = window;
+    </script>
+    <link rel="icon" type="image/png" href="/ship-icon.png" />
+</head>
+
+<body style="background: linear-gradient(135deg, var(--bg), var(--bg-2)); color: var(--text); font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue'" class="antialiased">
+<!-- ⏳ Loader minimalist până la montarea React -->
+<div
+        id="root"
+        style="min-height:100vh; display:flex; align-items:center; justify-content:center;"
+>
+    <div class="flex flex-col items-center justify-center gap-4 min-h-screen">
+        <div
+                class="w-12 h-12 border-4 rounded-full animate-spin"
+                style="border-color: rgba(var(--cyan-rgb),1); border-top-color: transparent;"
+        ></div>
+    </div>
+</div>
+
+<script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

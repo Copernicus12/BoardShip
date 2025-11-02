@@ -4,6 +4,11 @@ import useAuth from '../state/auth'
 const api = axios.create({ baseURL: '/' })
 
 api.interceptors.request.use((config) => {
+    // Don't add token to login/register requests
+    if (config.url?.includes('/api/auth/login') || config.url?.includes('/api/auth/register')) {
+        return config
+    }
+
     const { token } = useAuth.getState()
     if (token) {
         config.headers = config.headers ?? {}

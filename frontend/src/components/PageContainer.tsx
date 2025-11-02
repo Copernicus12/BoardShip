@@ -1,8 +1,8 @@
 import React from 'react'
 
-export default function PageContainer({ children, maxWidth = 'max-w-4xl' }: { children: React.ReactNode; maxWidth?: string }) {
+export default function PageContainer({ children, maxWidth = 'max-w-full' }: { children: React.ReactNode; maxWidth?: string }) {
     return (
-        <div className={`w-full ${maxWidth} mx-auto`}>
+        <div className={`w-full ${maxWidth} py-6 animate-fadeIn`}>
             {children}
         </div>
     )

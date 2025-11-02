@@ -3,15 +3,12 @@ import { useNavigate } from "react-router-dom"
 import useAuth from "../state/auth"
 
 export default function Header() {
-     const { user, logout, token } = useAuth()
-     const nav = useNavigate()
+    const { user, logout, token } = useAuth()
+    const nav = useNavigate()
 
-     return (
-         <header
-            className={"flex items-end justify-end h-full px-8 py-8 animate-fadeIn"}
-         >
-
-             {/* 👤 Profile / Login */}
+    return (
+        <header className="flex items-center justify-end px-8 py-6 animate-fadeIn">
+            {/* 👤 Profile / Login */}
             <div className="flex items-center gap-3 relative">
                 {/* decorative small blurred blob behind controls */}
                 <div className="pointer-events-none absolute -left-8 -top-6 w-28 h-20 rounded-full" style={{ background: 'radial-gradient(ellipse at center, var(--neon, #00b4d8)20%, transparent)', filter: 'blur(12px)', opacity: 0.35 }} />
@@ -32,7 +29,7 @@ export default function Header() {
                                 logout()
                                 nav("/login")
                             }}
-                            className="flex items-center gap-2 bg-neon text-navy font-bold px-4 py-2.5 rounded-xl transition shadow-lg"
+                            className="flex items-center gap-2 bg-neon text-navy font-bold px-4 py-2.5 rounded-xl transition shadow-lg hover:bg-cyan-400"
                         >
                             <LogOut size={20} />
                             <span>Logout</span>
@@ -41,13 +38,13 @@ export default function Header() {
                 ) : (
                     <button
                         onClick={() => nav("/login")}
-                        className="flex items-center gap-2 bg-neon text-navy font-bold px-4 py-2.5 rounded-xl transition shadow-lg"
+                        className="flex items-center gap-2 bg-neon text-navy font-bold px-4 py-2.5 rounded-xl transition shadow-lg hover:bg-cyan-400"
                     >
                         <LogIn size={20} />
                         <span>Login</span>
                     </button>
                 )}
             </div>
-         </header>
-     )
- }
+        </header>
+    )
+}

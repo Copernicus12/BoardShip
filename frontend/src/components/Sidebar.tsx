@@ -1,4 +1,4 @@
-import { Home, Users, Settings, Anchor, X, Trophy } from "lucide-react"
+import { Home, Users, Settings, Anchor, X, Trophy, LayoutDashboard, User } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 
 export default function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
@@ -6,12 +6,13 @@ export default function Sidebar({ open = false, onClose }: { open?: boolean; onC
 
     const menu = [
         { name: "Home", icon: <Home size={20} />, path: "/" },
+        { name: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/dashboard" },
         { name: "Lobby", icon: <Users size={20} />, path: "/lobby" },
         { name: "Leaderboard", icon: <Trophy size={20} />, path: "/leaderboard" },
+        { name: "Profile", icon: <User size={20} />, path: "/profile" },
         { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
     ]
 
-    // mobile translate: closed -> -translate-x-full, opened -> translate-x-0. On md+ always visible.
     const mobileTransform = open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
 
     return (
@@ -66,9 +67,9 @@ export default function Sidebar({ open = false, onClose }: { open?: boolean; onC
             <nav className="flex flex-col gap-2 mt-10 px-4 relative z-10">
                 {menu.map((m) => (
                     <Link
-                         key={m.path}
-                         to={m.path}
-                         onClick={() => onClose && onClose()} /* close on navigation in mobile */
+                        key={m.path}
+                        to={m.path}
+                        onClick={() => onClose && onClose()} /* close on navigation in mobile */
                         className={String.raw`
               flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
               ${
@@ -77,7 +78,7 @@ export default function Sidebar({ open = false, onClose }: { open?: boolean; onC
                                 : "text-muted hover:text-neon hover:bg-[rgba(10,140,160,0.06)]"
                         }
             `}
-                     >
+                    >
                         <div className={String.raw`
               p-2 rounded-lg transition
               ${
@@ -86,19 +87,19 @@ export default function Sidebar({ open = false, onClose }: { open?: boolean; onC
                                 : "bg-[rgba(7,16,33,0.12)] text-muted hover:text-neon"
                         }
             `}>
-                             {m.icon}
-                         </div>
+                            {m.icon}
+                        </div>
                         <span className="font-medium tracking-wide text-accent">{m.name}</span>
-                     </Link>
-                 ))}
-             </nav>
+                    </Link>
+                ))}
+            </nav>
 
             {/* FOOTER */}
             <div className="p-5 border-t border-accent relative z-10">
                 <p className="text-xs text-muted text-center">
-                     © {new Date().getFullYear()} BoardShip
-                 </p>
-             </div>
-         </aside>
-     )
- }
+                    © {new Date().getFullYear()} BoardShip
+                </p>
+            </div>
+        </aside>
+    )
+}

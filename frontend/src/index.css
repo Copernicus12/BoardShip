@@ -1,0 +1,226 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme variables for dark (default) and light (override via html.light) */
+:root {
+  --bg: #0b1220;
+  --bg-2: #101a2e;
+  --card: rgba(255,255,255,0.03);
+  --border: rgba(0,180,216,0.12);
+  --accent: #9bd6e6;
+  --muted: rgba(173,216,230,0.6);
+  --neon: #00b4d8;
+  --cyan: #48cae4;
+  --navy: #071021;
+  --text: #cfeefc;
+  --neon-rgb: 0,180,216;
+  --cyan-rgb: 72,202,228;
+  --navy-rgb: 7,16,33;
+}
+
+/* Light theme overrides */
+html.light {
+  --bg: #f7fafc;
+  --bg-2: #eef2f6;
+  --card: rgba(255,255,255,0.9);
+  --border: rgba(8,145,178,0.08);
+  --accent: #064e63;
+  --muted: rgba(6,78,99,0.45);
+  --neon: #007ea7;
+  --cyan: #0ca4d6;
+  --navy: #ffffff;
+  --text: #0b1220;
+  --neon-rgb: 0,126,167;
+  --cyan-rgb: 12,164,214;
+  --navy-rgb: 255,255,255;
+}
+
+/* Utility classes */
+.bg-app { background: linear-gradient(135deg, var(--bg) 0%, var(--bg-2) 100%); }
+.bg-card { background-color: var(--card); }
+.text-accent { color: var(--accent); }
+.text-muted { color: var(--muted); }
+.text-neon { color: var(--neon); }
+.border-accent { border-color: var(--border); }
+.bg-neon { background: linear-gradient(90deg, var(--neon), var(--cyan)); }
+.bg-navy { background-color: var(--navy); }
+
+/* Dynamic rgba helpers */
+.bg-neon-10 { background-color: rgba(var(--neon-rgb), 0.1); }
+.bg-neon-30 { background-color: rgba(var(--neon-rgb), 0.3); }
+.border-neon-30 { border-color: rgba(var(--neon-rgb), 0.3); }
+.bg-navy-20 { background-color: rgba(var(--navy-rgb), 0.2); }
+.bg-cyan-10 { background-color: rgba(var(--cyan-rgb), 0.08); }
+.border-cyan-30 { border-color: rgba(var(--cyan-rgb), 0.3); }
+.border-cyan-40 { border-color: rgba(var(--cyan-rgb), 0.4); }
+.text-cyan-60 { color: rgba(var(--cyan-rgb), 0.6); }
+
+/* Global reset */
+html {
+  margin: 0;
+  padding: 0;
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+#root {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes wave {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes ripple {
+  0% { transform: scale(0.8); opacity: 1; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+
+@keyframes oceanWave {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Animation classes */
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease-in-out;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft 0.6s ease-out;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.6s ease-out;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.5s ease-out;
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s ease-in-out infinite;
+}
+
+.animate-wave {
+  animation: wave 2s ease-in-out infinite;
+}
+
+/* Staggered animations */
+.stagger-children > * {
+  animation: fadeInUp 0.6s ease-out backwards;
+}
+
+.stagger-children > *:nth-child(1) { animation-delay: 0.1s; }
+.stagger-children > *:nth-child(2) { animation-delay: 0.2s; }
+.stagger-children > *:nth-child(3) { animation-delay: 0.3s; }
+.stagger-children > *:nth-child(4) { animation-delay: 0.4s; }
+.stagger-children > *:nth-child(5) { animation-delay: 0.5s; }
+.stagger-children > *:nth-child(6) { animation-delay: 0.6s; }
+
+/* Scroll utilities */
+.smooth-scroll {
+  scroll-behavior: smooth;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-2);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--neon), var(--cyan));
+  border-radius: 10px;
+  border: 2px solid var(--bg-2);
+  transition: all 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--cyan), var(--neon));
+  border-color: var(--neon);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--neon) var(--bg-2);
+}
+
+/* Ocean background effect */
+.ocean-bg {
+  background: linear-gradient(135deg, var(--bg) 0%, var(--bg-2) 50%, var(--bg) 100%);
+  background-size: 200% 200%;
+  animation: oceanWave 15s ease infinite;
+}
+
+/* Modal blur effect */
+body.modal-open .sidebar {
+  filter: blur(6px);
+  transform: scale(0.995);
+  transition: filter 200ms ease, transform 200ms ease;
+}
