@@ -33,6 +33,7 @@ export default function Game() {
     const [opponentReady, setOpponentReady] = useState(false);
     const [myAttacks, setMyAttacks] = useState<Array<{row: number, col: number, isHit: boolean}>>([]);
     const [opponentAttacks, setOpponentAttacks] = useState<Array<{row: number, col: number, isHit: boolean}>>([]);
+    const [winner, setWinner] = useState<string | null>(null);
     const stompClientRef = useRef<StompClient | null>(null);
 
     useEffect(() => {
@@ -122,6 +123,11 @@ export default function Game() {
                         const stillMyTurn = payload.currentPlayer === user?.id;
                         console.log(`It's still ${stillMyTurn ? 'MY' : "OPPONENT'S"} turn - they can attack again!`);
                         setIsMyTurn(stillMyTurn);
+                    } else if (payload.type === 'GAME_OVER') {
+                        console.log('🏆 GAME OVER!', payload);
+                        setGamePhase('finished');
+                        setWinner(payload.winner);
+                        setIsMyTurn(false);
                     }
                 } catch (e) {
                     console.error('Invalid game update', e);
@@ -182,16 +188,6 @@ export default function Game() {
         };
     }, [roomId, user, token]);
 
-    // Start game when both players are ready
-    useEffect(() => {
-        if (gamePhase === 'ready' && opponentReady) {
-            console.log('Both players ready - starting game!');
-            setTimeout(() => {
-                setGamePhase('playing');
-                setIsMyTurn(isHost); // Host goes first
-            }, 1500);
-        }
-    }, [gamePhase, opponentReady, isHost]);
 
     const handleShipPlacementComplete = (ships: PlacedShip[]) => {
         setMyShips(ships);
@@ -248,13 +244,14 @@ export default function Game() {
                             gamePhase === 'waiting' ? 'bg-yellow-500/20 text-yellow-400' :
                             gamePhase === 'placement' ? 'bg-blue-500/20 text-blue-400' :
                             gamePhase === 'ready' ? 'bg-purple-500/20 text-purple-400' :
+                            gamePhase === 'finished' ? (winner === user?.id ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400') :
                             isMyTurn ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                         }`}>
                             {gamePhase === 'waiting' && '⏳ Waiting for opponent...'}
                             {gamePhase === 'placement' && '📍 Place your ships'}
                             {gamePhase === 'ready' && '⏰ Waiting for opponent to be ready...'}
                             {gamePhase === 'playing' && (isMyTurn ? '🎯 Your Turn' : '⏳ Opponent\'s Turn')}
-                            {gamePhase === 'finished' && '🏆 Game Finished'}
+                            {gamePhase === 'finished' && (winner === user?.id ? '🏆 Victory!' : '💀 Defeat')}
                         </span>
                         <span className="text-cyan-400">
                             Players: <span className="font-bold">{opponentConnected ? '2/2' : '1/2'}</span>
@@ -302,6 +299,43 @@ export default function Game() {
                             <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
                             <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
                             <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}></div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Finished Phase - Victory/Defeat Screen */}
+                {gamePhase === 'finished' && (
+                    <div className={`rounded-lg p-12 border text-center ${
+                        winner === user?.id 
+                            ? 'bg-green-900/30 border-green-500/50' 
+                            : 'bg-red-900/30 border-red-500/50'
+                    }`}>
+                        <div className="text-8xl mb-6">
+                            {winner === user?.id ? '🏆' : '💀'}
+                        </div>
+                        <h2 className={`text-5xl font-bold mb-4 ${
+                            winner === user?.id ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                            {winner === user?.id ? 'VICTORY!' : 'DEFEAT'}
+                        </h2>
+                        <p className="text-gray-300 text-xl mb-8">
+                            {winner === user?.id
+                                ? '🎯 You destroyed all enemy ships!'
+                                : '💥 All your ships were destroyed!'}
+                        </p>
+                        <div className="flex justify-center gap-4">
+                            <button
+                                onClick={() => navigate('/lobby')}
+                                className="px-8 py-4 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-lg border border-cyan-500/50 transition-all text-lg font-semibold"
+                            >
+                                Return to Lobby
+                            </button>
+                            <button
+                                onClick={() => window.location.reload()}
+                                className="px-8 py-4 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg border border-purple-500/50 transition-all text-lg font-semibold"
+                            >
+                                Play Again
+                            </button>
                         </div>
                     </div>
                 )}

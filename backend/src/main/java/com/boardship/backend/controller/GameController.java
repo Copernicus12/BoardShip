@@ -30,6 +30,9 @@ public class GameController {
     // Track attacked cells per room: roomId -> Set of "row,col" strings
     private final Map<String, java.util.Set<String>> roomAttackedCells = new ConcurrentHashMap<>();
 
+    // Track hit cells per room per player: roomId -> playerId -> Set of "row,col" strings
+    private final Map<String, Map<String, java.util.Set<String>>> roomPlayerHits = new ConcurrentHashMap<>();
+
     @MessageMapping("/game/{roomId}/ready")
     public void playerReady(@DestinationVariable String roomId, @RequestBody Map<String, Object> payload) {
         log.info("Player ready in room {}: {}", roomId, payload);
@@ -150,6 +153,13 @@ public class GameController {
             }
         }
 
+        // Track hits for victory detection
+        if (isHit) {
+            roomPlayerHits.putIfAbsent(roomId, new ConcurrentHashMap<>());
+            roomPlayerHits.get(roomId).putIfAbsent(attackerId, java.util.concurrent.ConcurrentHashMap.newKeySet());
+            roomPlayerHits.get(roomId).get(attackerId).add(cellKey);
+        }
+
         // Broadcast attack result to all players
         Map<String, Object> attackMessage = Map.of(
             "type", "ATTACK",
@@ -160,6 +170,45 @@ public class GameController {
         );
 
         messagingTemplate.convertAndSend("/topic/game/" + roomId, attackMessage);
+
+        // Check for victory - count total ship positions for defender
+        if (isHit && defenderShips != null) {
+            int totalShipCells = 0;
+            for (Map<String, Object> ship : defenderShips) {
+                @SuppressWarnings("unchecked")
+                java.util.List<Map<String, Object>> positions =
+                    (java.util.List<Map<String, Object>>) ship.get("positions");
+                if (positions != null) {
+                    totalShipCells += positions.size();
+                }
+            }
+
+            int attackerHits = roomPlayerHits.get(roomId).get(attackerId).size();
+            log.info("Victory check: {} hits out of {} total ship cells", attackerHits, totalShipCells);
+
+            if (attackerHits >= totalShipCells) {
+                // VICTORY!
+                log.info("🏆 VICTORY! Player {} has destroyed all of {}'s ships!", attackerId, defenderId);
+
+                Map<String, Object> victoryMessage = Map.of(
+                    "type", "GAME_OVER",
+                    "winner", attackerId,
+                    "loser", defenderId,
+                    "message", "All ships destroyed!"
+                );
+
+                messagingTemplate.convertAndSend("/topic/game/" + roomId, victoryMessage);
+
+                // Clean up room data
+                roomReadyPlayers.remove(roomId);
+                roomPlayers.remove(roomId);
+                roomCurrentTurn.remove(roomId);
+                roomAttackedCells.remove(roomId);
+                roomPlayerHits.remove(roomId);
+
+                return; // Game is over, don't process turn changes
+            }
+        }
 
         // Classic Battleship rule: MISS = lose turn, HIT = keep turn
         if (!isHit) {
