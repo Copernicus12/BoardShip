@@ -228,7 +228,19 @@ export default function Lobby() {
                                     </div>
                                     <div className="flex gap-6 text-sm text-muted">
                                         <div><span className="text-muted">Host: </span><span className="text-accent">{room.hostName ?? 'Anonymous'}</span></div>
-                                        <div><span className="text-muted">Mode: </span><span className="text-accent">{room.mode ?? ''}</span></div>
+                                        <div>
+                                            <span className="text-muted">Mode: </span>
+                                            <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
+                                                room.mode === 'speed' ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40' :
+                                                room.mode === 'ranked' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' :
+                                                'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                                            }`}>
+                                                {room.mode === 'speed' && '⚡ Speed'}
+                                                {room.mode === 'ranked' && '🏆 Ranked'}
+                                                {room.mode === 'classic' && '⚓ Classic'}
+                                                {!room.mode && '⚓ Classic'}
+                                            </span>
+                                        </div>
                                         <div><span className="text-muted">Players: </span><span className="text-accent">{(room.currentPlayers ?? 0) + '/' + (room.maxPlayers ?? 0)}</span></div>
                                     </div>
                                 </div>
@@ -255,10 +267,15 @@ export default function Lobby() {
                             <div>
                                 <label className="block text-accent text-sm font-semibold mb-2">Game Mode</label>
                                 <select value={gameMode} onChange={(e) => setGameMode(e.target.value)} className="w-full px-4 py-2 bg-navy border border-accent rounded-lg text-accent focus:border-neon outline-none transition">
-                                    <option value="classic">Classic Mode</option>
-                                    <option value="speed">Speed Battle</option>
-                                    <option value="ranked">Ranked Mode</option>
+                                    <option value="classic">⚓ Classic Mode</option>
+                                    <option value="speed">⚡ Speed Battle (3s per turn)</option>
+                                    <option value="ranked">🏆 Ranked Mode (RP tracking)</option>
                                 </select>
+                                <div className="mt-2 text-xs text-muted">
+                                    {gameMode === 'classic' && '• Classic Battleship gameplay with no time limits'}
+                                    {gameMode === 'speed' && '• Fast-paced! Make your move within 3 seconds or lose your turn'}
+                                    {gameMode === 'ranked' && '• Competitive mode with Ranking Points (RP) - win to climb the ladder!'}
+                                </div>
                             </div>
 
                             <div className="flex gap-3 mt-6">

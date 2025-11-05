@@ -40,6 +40,10 @@ export default function Game() {
     const [winner, setWinner] = useState<string | null>(null);
     const [winReason, setWinReason] = useState<string | null>(null);
     const [gameOverMessage, setGameOverMessage] = useState<string | null>(null);
+    const [gameMode, setGameMode] = useState<string>('classic');
+    const [turnTimeLimit, setTurnTimeLimit] = useState<number>(0);
+    const [turnTimeRemaining, setTurnTimeRemaining] = useState<number>(0);
+    const [rpChange, setRpChange] = useState<number | null>(null);
     const stompClientRef = useRef<StompClient | null>(null);
 
     const deleteLobbyIfHost = useCallback(async () => {
@@ -82,6 +86,12 @@ export default function Game() {
                             const gameState = gameStateRes.data;
                             console.log('Game state loaded:', gameState);
 
+                            // Restore game mode
+                            if (gameState.gameMode) {
+                                setGameMode(gameState.gameMode);
+                                console.log('Restored game mode:', gameState.gameMode);
+                            }
+
                             // Determine which player we are
                             const isPlayer1 = user && gameState.player1Id === user.id;
                             const isPlayer2 = user && gameState.player2Id === user.id;
@@ -105,8 +115,24 @@ export default function Game() {
 
                                 if (gameState.gamePhase === 'playing') {
                                     setGamePhase('playing');
-                                    setIsMyTurn(gameState.currentTurn === user.id);
+                                    const isMyCurrentTurn = gameState.currentTurn === user.id;
+                                    setIsMyTurn(isMyCurrentTurn);
                                     setOpponentReady(true);
+
+                                    // For speed mode, always set time limit (for display purposes)
+                                    if (gameState.gameMode === 'speed') {
+                                        setTurnTimeLimit(3);
+
+                                        // Calculate initial remaining time from server timestamp
+                                        if (gameState.turnStartedAt) {
+                                            const serverTurnStartTime = new Date(gameState.turnStartedAt).getTime();
+                                            const now = Date.now();
+                                            const elapsedSeconds = Math.floor((now - serverTurnStartTime) / 1000);
+                                            const remainingTime = Math.max(0, 3 - elapsedSeconds);
+                                            setTurnTimeRemaining(remainingTime);
+                                            console.log('Speed mode: Restored timer with', remainingTime, 'seconds remaining (Player 1)');
+                                        }
+                                    }
                                 } else {
                                     setGamePhase('ready');
                                     setOpponentReady(gameState.player2Ready || false);
@@ -130,8 +156,24 @@ export default function Game() {
 
                                 if (gameState.gamePhase === 'playing') {
                                     setGamePhase('playing');
-                                    setIsMyTurn(gameState.currentTurn === user.id);
+                                    const isMyCurrentTurn = gameState.currentTurn === user.id;
+                                    setIsMyTurn(isMyCurrentTurn);
                                     setOpponentReady(true);
+
+                                    // For speed mode, always set time limit (for display purposes)
+                                    if (gameState.gameMode === 'speed') {
+                                        setTurnTimeLimit(3);
+
+                                        // Calculate initial remaining time from server timestamp
+                                        if (gameState.turnStartedAt) {
+                                            const serverTurnStartTime = new Date(gameState.turnStartedAt).getTime();
+                                            const now = Date.now();
+                                            const elapsedSeconds = Math.floor((now - serverTurnStartTime) / 1000);
+                                            const remainingTime = Math.max(0, 3 - elapsedSeconds);
+                                            setTurnTimeRemaining(remainingTime);
+                                            console.log('Speed mode: Restored timer with', remainingTime, 'seconds remaining (Player 2)');
+                                        }
+                                    }
                                 } else {
                                     setGamePhase('ready');
                                     setOpponentReady(gameState.player1Ready || false);
@@ -189,6 +231,14 @@ export default function Game() {
                         console.log('🚀 Game starting!', payload);
                         setGamePhase('playing');
                         setIsMyTurn(payload.firstPlayer === user?.id);
+
+                        // Set game mode and turn time limit
+                        if (payload.gameMode) {
+                            setGameMode(payload.gameMode);
+                        }
+                        if (payload.turnTimeLimit) {
+                            setTurnTimeLimit(payload.turnTimeLimit);
+                        }
                     } else if (payload.type === 'ATTACK') {
                         // Handle attack (from me or opponent)
                         console.log('💥 Attack:', payload);
@@ -213,8 +263,21 @@ export default function Game() {
                         const isMyNewTurn = payload.currentPlayer === user?.id;
                         console.log(`It's now ${isMyNewTurn ? 'MY' : "OPPONENT'S"} turn`);
                         setIsMyTurn(isMyNewTurn);
+
+                        // Reset timer for speed mode
+                        if (gameMode === 'speed') {
+                            setTurnTimeRemaining(turnTimeLimit || 3);
+                        }
+                    } else if (payload.type === 'TURN_TIMEOUT') {
+                        console.log('⏱️ Turn timeout!', payload);
+                        const isMyNewTurn = payload.currentPlayer === user?.id;
+                        setIsMyTurn(isMyNewTurn);
+
+                        // Reset timer for speed mode
+                        if (gameMode === 'speed') {
+                            setTurnTimeRemaining(turnTimeLimit || 3);
+                        }
                     } else if (payload.type === 'TURN_KEEP') {
-                        console.log('🎯 HIT! Keep the turn:', payload);
                         const stillMyTurn = payload.currentPlayer === user?.id;
                         console.log(`It's still ${stillMyTurn ? 'MY' : "OPPONENT'S"} turn - they can attack again!`);
                         setIsMyTurn(stillMyTurn);
@@ -233,6 +296,13 @@ export default function Game() {
                         if (payload.message) {
                             setGameOverMessage(payload.message);
                             console.log('Game over message:', payload.message);
+                        }
+
+                        // Save RP change for ranked mode
+                        if (payload.winner === user?.id && payload.winnerRpChange) {
+                            setRpChange(payload.winnerRpChange);
+                        } else if (payload.loser === user?.id && payload.loserRpChange) {
+                            setRpChange(payload.loserRpChange);
                         }
                     }
                 } catch (e) {
@@ -261,6 +331,7 @@ export default function Game() {
             mounted = false;
             console.log('Game: unmount cleanup', { isHost: isHostRef.current, roomId });
 
+
             try {
                 client?.deactivate();
             } catch (e) {
@@ -272,6 +343,40 @@ export default function Game() {
             }
         };
     }, [roomId, user, navigate, deleteLobbyIfHost]);
+
+    // Speed mode timer countdown - runs for all players to show real-time countdown
+    useEffect(() => {
+        if (gameMode !== 'speed' || gamePhase !== 'playing' || turnTimeLimit === 0) {
+            return;
+        }
+
+        // Always start from the limit when the effect runs (triggered by turn changes)
+        setTurnTimeRemaining(turnTimeLimit);
+
+        const interval = setInterval(() => {
+            setTurnTimeRemaining((prev) => {
+                if (prev <= 1) {
+                    clearInterval(interval);
+
+                    // Only send timeout if it's MY turn
+                    if (isMyTurn && stompClientRef.current && roomId && user) {
+                        console.log('⏱️ Time expired! Sending timeout to server...');
+                        stompClientRef.current.publish({
+                            destination: `/app/game/${roomId}/timeout`,
+                            body: JSON.stringify({
+                                playerId: user.id
+                            })
+                        });
+                    }
+
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [gameMode, isMyTurn, gamePhase, turnTimeLimit, roomId, user]);
 
     const handleLeaveToLobby = useCallback(async () => {
         hostLeaveIntentRef.current = true;
@@ -366,6 +471,22 @@ export default function Game() {
                         <span className="text-cyan-400">
                             Players: <span className="font-bold">{opponentConnected ? '2/2' : '1/2'}</span>
                         </span>
+                        <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 capitalize">
+                            {gameMode} Mode
+                        </span>
+                        {gameMode === 'speed' && gamePhase === 'playing' && turnTimeLimit > 0 && (
+                            <span className={`px-3 py-1 rounded-full font-bold ${
+                                isMyTurn ? (
+                                    turnTimeRemaining <= 1 ? 'bg-red-500/30 text-red-300 animate-pulse' : 
+                                    turnTimeRemaining <= 2 ? 'bg-orange-500/30 text-orange-300' : 
+                                    'bg-green-500/20 text-green-300'
+                                ) : (
+                                    'bg-blue-500/20 text-blue-300'
+                                )
+                            }`}>
+                                ⏱️ {turnTimeRemaining}s {!isMyTurn && '(Opponent)'}
+                            </span>
+                        )}
                         {isHost && (
                             <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400">
                                 👑 Host
@@ -451,6 +572,18 @@ export default function Game() {
                                     : '💥 All your ships were destroyed!'
                             )}
                         </p>
+                        {gameMode === 'ranked' && rpChange !== null && (
+                            <div className={`mb-6 px-6 py-3 rounded-lg border-2 ${
+                                rpChange > 0 
+                                    ? 'bg-green-500/20 border-green-500 text-green-300' 
+                                    : 'bg-red-500/20 border-red-500 text-red-300'
+                            }`}>
+                                <div className="text-sm font-semibold mb-1">Ranking Points</div>
+                                <div className="text-3xl font-bold">
+                                    {rpChange > 0 ? '+' : ''}{rpChange} RP
+                                </div>
+                            </div>
+                        )}
                         <div className="flex justify-center gap-4">
                             <button
                                 onClick={handleLeaveToLobby}

@@ -50,6 +50,15 @@ public class GameController {
     // Track when each room's match started to compute duration
     private final Map<String, Instant> roomGameStart = new ConcurrentHashMap<>();
 
+    // Track game mode for each room
+    private final Map<String, String> roomGameMode = new ConcurrentHashMap<>();
+
+    // Track turn start time for speed mode
+    private final Map<String, Instant> roomTurnStartTime = new ConcurrentHashMap<>();
+
+    // Speed mode configuration: time limit per turn in seconds
+    private static final int SPEED_MODE_TURN_LIMIT_SECONDS = 3;
+
     @MessageMapping("/game/{roomId}/ready")
     public void playerReady(@DestinationVariable String roomId, @RequestBody Map<String, Object> payload) {
         log.info("Player ready in room {}: {}", roomId, payload);
@@ -79,14 +88,24 @@ public class GameController {
             // Create new game state
             Lobby lobby = lobbyRepository.findById(roomId).orElse(null);
             if (lobby != null) {
+                // Get game mode from lobby
+                String gameMode = lobby.getMode() != null ? lobby.getMode().toLowerCase() : "classic";
+                roomGameMode.put(roomId, gameMode);
+
                 gameState = GameState.builder()
                     .id(roomId)
                     .player1Id(lobby.getHostId())
                     .player2Id(null) // Will be set when second player joins
                     .gamePhase("placement")
+                    .gameMode(gameMode)
                     .createdAt(Instant.now())
                     .updatedAt(Instant.now())
                     .build();
+            }
+        } else {
+            // Load game mode from existing state
+            if (gameState.getGameMode() != null) {
+                roomGameMode.put(roomId, gameState.getGameMode());
             }
         }
 
@@ -134,10 +153,18 @@ public class GameController {
             roomCurrentTurn.put(roomId, firstPlayerId);
             roomGameStart.put(roomId, Instant.now());
 
+            // For speed mode, initialize turn timer
+            String gameMode = roomGameMode.getOrDefault(roomId, "classic");
+            if ("speed".equals(gameMode)) {
+                roomTurnStartTime.put(roomId, Instant.now());
+            }
+
             Map<String, Object> startMessage = Map.of(
                 "type", "GAME_START",
                 "firstPlayer", firstPlayerId,
-                "roomId", roomId
+                "roomId", roomId,
+                "gameMode", gameMode,
+                "turnTimeLimit", "speed".equals(gameMode) ? SPEED_MODE_TURN_LIMIT_SECONDS : 0
             );
 
             messagingTemplate.convertAndSend("/topic/game/" + roomId, startMessage);
@@ -158,6 +185,22 @@ public class GameController {
         if (currentPlayer == null || !currentPlayer.equals(attackerId)) {
             log.warn("Player {} tried to attack but it's not their turn in room {}", attackerId, roomId);
             return;
+        }
+
+        // Check turn time limit for speed mode
+        String gameMode = roomGameMode.getOrDefault(roomId, "classic");
+        if ("speed".equals(gameMode)) {
+            Instant turnStart = roomTurnStartTime.get(roomId);
+            if (turnStart != null) {
+                long elapsedSeconds = Duration.between(turnStart, Instant.now()).getSeconds();
+                if (elapsedSeconds > SPEED_MODE_TURN_LIMIT_SECONDS) {
+                    log.warn("Player {} exceeded turn time limit in speed mode ({}s elapsed)",
+                             attackerId, elapsedSeconds);
+                    // Auto-forfeit turn - treat as miss and switch turns
+                    handleTurnTimeout(roomId, attackerId);
+                    return;
+                }
+            }
         }
 
         int row = ((Number) payload.get("row")).intValue();
@@ -260,13 +303,37 @@ public class GameController {
                 // VICTORY!
                 log.info("🏆 VICTORY! Player {} has destroyed all of {}'s ships!", attackerId, defenderId);
 
-                persistMatchResult(roomId, attackerId, defenderId);
+                // Calculate RP for ranked mode
+                Integer winnerRpChange = null;
+                Integer loserRpChange = null;
+
+                if ("ranked".equals(gameMode)) {
+                    // Calculate RP based on performance
+                    // Winner gets +20 to +30 RP, loser gets -10 to -20 RP
+                    int defenderHits = roomPlayerHits.get(roomId).getOrDefault(defenderId,
+                                                                               java.util.concurrent.ConcurrentHashMap.newKeySet()).size();
+
+                    // Better performance = more RP
+                    // If winner hit all ships with minimal damage taken, they get more RP
+                    int performanceBonus = Math.max(0, 10 - defenderHits);
+                    winnerRpChange = 20 + performanceBonus;
+
+                    int performancePenalty = Math.min(0, defenderHits - 5);
+                    loserRpChange = -15 + performancePenalty;
+
+                    log.info("Ranked mode RP changes: winner {} gets +{}, loser {} gets {}",
+                             attackerId, winnerRpChange, defenderId, loserRpChange);
+                }
+
+                persistMatchResult(roomId, attackerId, defenderId, winnerRpChange, loserRpChange);
 
                 Map<String, Object> victoryMessage = Map.of(
                     "type", "GAME_OVER",
                     "winner", attackerId,
                     "loser", defenderId,
-                    "message", "All ships destroyed!"
+                    "message", "All ships destroyed!",
+                    "winnerRpChange", winnerRpChange != null ? winnerRpChange : 0,
+                    "loserRpChange", loserRpChange != null ? loserRpChange : 0
                 );
 
                 messagingTemplate.convertAndSend("/topic/game/" + roomId, victoryMessage);
@@ -278,6 +345,8 @@ public class GameController {
                 roomAttackedCells.remove(roomId);
                 roomPlayerHits.remove(roomId);
                 roomGameStart.remove(roomId);
+                roomGameMode.remove(roomId);
+                roomTurnStartTime.remove(roomId);
 
                 // Clean up from database
                 gameStateRepository.deleteById(roomId);
@@ -292,6 +361,11 @@ public class GameController {
             // MISS - change turn to opponent
             String nextPlayer = defenderId;
             roomCurrentTurn.put(roomId, nextPlayer);
+
+            // Reset turn timer for speed mode
+            if ("speed".equals(roomGameMode.getOrDefault(roomId, "classic"))) {
+                roomTurnStartTime.put(roomId, Instant.now());
+            }
 
             // Update turn in database
             updateCurrentTurnInDatabase(roomId, nextPlayer);
@@ -308,6 +382,7 @@ public class GameController {
             messagingTemplate.convertAndSend("/topic/game/" + roomId, turnMessage);
         } else {
             // HIT - attacker keeps the turn
+            // Don't reset timer - timer continues for speed mode
             log.info("HIT! Player {} keeps the turn in room {}", attackerId, roomId);
 
             Map<String, Object> keepTurnMessage = Map.of(
@@ -368,12 +443,47 @@ public class GameController {
             if (gameState != null) {
                 gameState.setCurrentTurn(playerId);
                 gameState.setUpdatedAt(Instant.now());
+
+                // Update turn start time for speed mode
+                if ("speed".equals(gameState.getGameMode())) {
+                    gameState.setTurnStartedAt(Instant.now());
+                }
+
                 gameStateRepository.save(gameState);
                 log.info("Updated current turn to {} in database for room {}", playerId, roomId);
             }
         } catch (Exception e) {
             log.error("Failed to update turn in database for room {}: {}", roomId, e.getMessage(), e);
         }
+    }
+
+    private void handleTurnTimeout(String roomId, String timeoutPlayerId) {
+        log.info("⏱️ Turn timeout for player {} in room {}", timeoutPlayerId, roomId);
+
+        // Get opponent
+        java.util.List<String> players = roomPlayers.get(roomId);
+        if (players == null || players.size() < 2) {
+            return;
+        }
+
+        String opponentId = players.get(0).equals(timeoutPlayerId) ? players.get(1) : players.get(0);
+
+        // Switch turn to opponent
+        roomCurrentTurn.put(roomId, opponentId);
+        roomTurnStartTime.put(roomId, Instant.now());
+
+        // Update database
+        updateCurrentTurnInDatabase(roomId, opponentId);
+
+        // Notify players
+        Map<String, Object> timeoutMessage = Map.of(
+            "type", "TURN_TIMEOUT",
+            "timedOutPlayer", timeoutPlayerId,
+            "currentPlayer", opponentId,
+            "message", "Time's up! Turn switched."
+        );
+
+        messagingTemplate.convertAndSend("/topic/game/" + roomId, timeoutMessage);
     }
 
     private void ensureRoomStateLoaded(String roomId) {
@@ -443,11 +553,21 @@ public class GameController {
                 roomCurrentTurn.put(roomId, gameState.getCurrentTurn());
             }
 
+            // Load game mode
+            if (gameState.getGameMode() != null) {
+                roomGameMode.put(roomId, gameState.getGameMode());
+            }
+
+            // Load turn start time for speed mode
+            if (gameState.getTurnStartedAt() != null && "speed".equals(gameState.getGameMode())) {
+                roomTurnStartTime.put(roomId, gameState.getTurnStartedAt());
+            }
+
             log.info("Successfully loaded game state from database for room {}", roomId);
         }
     }
 
-    private void persistMatchResult(String roomId, String winnerId, String loserId) {
+    private void persistMatchResult(String roomId, String winnerId, String loserId, Integer winnerRp, Integer loserRp) {
         try {
             Instant endTime = Instant.now();
             Instant startTime = roomGameStart.get(roomId);
@@ -489,7 +609,7 @@ public class GameController {
                 .mode(mode)
                 .result("won")
                 .score(winnerScore)
-                .pointsChange(null)
+                .pointsChange(winnerRp)
                 .durationSeconds(durationSeconds)
                 .playedAt(endTime)
                 .build();
@@ -502,7 +622,7 @@ public class GameController {
                 .mode(mode)
                 .result("lost")
                 .score(loserScore)
-                .pointsChange(null)
+                .pointsChange(loserRp)
                 .durationSeconds(durationSeconds)
                 .playedAt(endTime)
                 .build();
@@ -598,6 +718,15 @@ public class GameController {
         }
     }
 
+    @MessageMapping("/game/{roomId}/timeout")
+    public void handleTimeout(@DestinationVariable String roomId, @RequestBody Map<String, Object> payload) {
+        String playerId = (String) payload.get("playerId");
+        log.info("⏱️ Timeout received from player {} in room {}", playerId, roomId);
+
+        // Call the existing timeout handler
+        handleTurnTimeout(roomId, playerId);
+    }
+
     @MessageMapping("/game/{roomId}/leave")
     public void leaveGame(@DestinationVariable String roomId, @RequestBody Map<String, Object> payload) {
         log.info("Player leaving room {}: {}", roomId, payload);
@@ -677,6 +806,8 @@ public class GameController {
                 roomAttackedCells.remove(roomId);
                 roomPlayerHits.remove(roomId);
                 roomGameStart.remove(roomId);
+                roomGameMode.remove(roomId);
+                roomTurnStartTime.remove(roomId);
             }
         }
 

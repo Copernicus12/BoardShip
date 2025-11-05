@@ -29,6 +29,16 @@ public class GameState {
     private String gamePhase; // waiting, placement, ready, playing, finished
     private String currentTurn;
 
+    // Game mode: classic, speed, ranked
+    private String gameMode;
+
+    // For speed mode: track when turn started (to enforce time limit)
+    private Instant turnStartedAt;
+
+    // For ranked mode: track RP (Ranking Points) changes
+    private Integer player1RpChange;
+    private Integer player2RpChange;
+
     // Ship placements for each player
     private List<Map<String, Object>> player1Ships;
     private List<Map<String, Object>> player2Ships;
