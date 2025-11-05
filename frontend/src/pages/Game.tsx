@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import useAuth from '../state/auth';
@@ -18,14 +18,18 @@ type PlacedShip = {
     orientation: 'horizontal' | 'vertical';
 };
 
-const WS_ENDPOINT = import.meta.env.DEV ? 'http://localhost:8080/ws' : `${window.location.origin}/ws`;
+// Prefer an explicit WS endpoint from env; otherwise fall back to a same-origin `/ws`
+// path so local dev can rely on the Vite proxy and production can use the backend host.
+const WS_ENDPOINT = import.meta.env.VITE_WS_URL ?? '/ws';
 
 export default function Game() {
     const { roomId } = useParams();
     const navigate = useNavigate();
-    const { user, token } = useAuth();
+    const { user } = useAuth();
     const [isHost, setIsHost] = useState(false);
     const isHostRef = useRef(false);
+    const hostLeaveIntentRef = useRef(false);
+    const lobbyDeletedRef = useRef(false);
     const [gamePhase, setGamePhase] = useState<GamePhase>('waiting');
     const [isMyTurn, setIsMyTurn] = useState(false);
     const [opponentConnected, setOpponentConnected] = useState(false);
@@ -35,6 +39,20 @@ export default function Game() {
     const [opponentAttacks, setOpponentAttacks] = useState<Array<{row: number, col: number, isHit: boolean}>>([]);
     const [winner, setWinner] = useState<string | null>(null);
     const stompClientRef = useRef<StompClient | null>(null);
+
+    const deleteLobbyIfHost = useCallback(async () => {
+        if (!isHostRef.current || !roomId || lobbyDeletedRef.current) {
+            return;
+        }
+
+        try {
+            await api.delete(`/api/lobbies/${roomId}`);
+            lobbyDeletedRef.current = true;
+            console.log('Game: host deleted lobby intentionally', { roomId });
+        } catch (error) {
+            console.error('Failed to delete lobby', error);
+        }
+    }, [roomId]);
 
     useEffect(() => {
         if (!roomId) return;
@@ -70,7 +88,7 @@ export default function Game() {
 
         // WebSocket connection for real-time updates
         const client = new StompClient({
-            webSocketFactory: () => new SockJS(WS_ENDPOINT) as any,
+            webSocketFactory: () => new SockJS(WS_ENDPOINT) as unknown as WebSocket,
             reconnectDelay: 3000,
         });
 
@@ -140,9 +158,7 @@ export default function Game() {
                     const payload = JSON.parse(msg.body);
                     if (payload.id === roomId && payload.currentPlayers >= 2) {
                         setOpponentConnected(true);
-                        if (gamePhase === 'waiting') {
-                            setGamePhase('placement');
-                        }
+                        setGamePhase(prev => (prev === 'waiting' ? 'placement' : prev));
                     }
                 } catch (e) {
                     console.error('Invalid lobby update', e);
@@ -153,25 +169,8 @@ export default function Game() {
         client.activate();
         stompClientRef.current = client;
 
-        const handleBeforeUnload = () => {
-            console.log('Game: beforeunload triggered', { isHost: isHostRef.current, roomId });
-            if (isHostRef.current && roomId) {
-                try {
-                    const hdrs: any = { 'Content-Type': 'application/json' };
-                    if (token) hdrs['Authorization'] = `Bearer ${token}`;
-                    try {
-                        fetch(`/api/lobbies/${roomId}`, { method: 'DELETE', headers: hdrs, keepalive: true });
-                    } catch (e) {
-                    }
-                } catch (e) {}
-            }
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-
         return () => {
             mounted = false;
-            window.removeEventListener('beforeunload', handleBeforeUnload);
             console.log('Game: unmount cleanup', { isHost: isHostRef.current, roomId });
 
             try {
@@ -180,13 +179,21 @@ export default function Game() {
                 console.error('Error deactivating WebSocket', e);
             }
 
-            (async () => {
-                if (isHostRef.current && roomId) {
-                    try { await api.delete(`/api/lobbies/${roomId}`); } catch (e) {}
-                }
-            })();
+            if (hostLeaveIntentRef.current) {
+                void deleteLobbyIfHost();
+            }
         };
-    }, [roomId, user, token]);
+    }, [roomId, user, navigate, deleteLobbyIfHost]);
+
+    const handleLeaveToLobby = useCallback(async () => {
+        hostLeaveIntentRef.current = true;
+
+        try {
+            await deleteLobbyIfHost();
+        } finally {
+            navigate('/lobby');
+        }
+    }, [deleteLobbyIfHost, navigate]);
 
 
     const handleShipPlacementComplete = (ships: PlacedShip[]) => {
@@ -325,7 +332,7 @@ export default function Game() {
                         </p>
                         <div className="flex justify-center gap-4">
                             <button
-                                onClick={() => navigate('/lobby')}
+                                onClick={handleLeaveToLobby}
                                 className="px-8 py-4 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-lg border border-cyan-500/50 transition-all text-lg font-semibold"
                             >
                                 Return to Lobby
@@ -416,7 +423,7 @@ export default function Game() {
                                 💡 <span className="font-semibold">Tip:</span> Click on enemy waters to attack. Rotate the camera using mouse drag.
                             </div>
                             <button
-                                onClick={() => navigate('/lobby')}
+                                onClick={handleLeaveToLobby}
                                 className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/50 transition-all"
                             >
                                 Leave Game
@@ -429,7 +436,7 @@ export default function Game() {
                 {gamePhase === 'waiting' && (
                     <div className="mt-6 text-center">
                         <button
-                            onClick={() => navigate('/lobby')}
+                            onClick={handleLeaveToLobby}
                             className="px-6 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/50 transition-all"
                         >
                             Cancel & Leave

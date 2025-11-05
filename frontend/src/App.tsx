@@ -5,6 +5,7 @@ import Header from './components/Header';
 import ScrollToTop from './components/ScrollToTop';
 import ScrollToTopOnNavigate from './components/ScrollToTopOnNavigate';
 import { Menu } from 'lucide-react';
+import PresenceHeartbeat from './components/PresenceHeartbeat';
 
 export default function App() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -31,6 +32,7 @@ export default function App() {
                     <p className="text-accent">Loading...</p>
                 </div>
             }>
+                <PresenceHeartbeat />
                 {/* Layout with Sidebar for authenticated pages */}
                 {showSidebar ? (
                     <div className="flex min-h-screen">

@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface LobbyRepository extends MongoRepository<Lobby, String> {
     List<Lobby> findByStatus(String status);
+    long countByStatus(String status);
+    long countByStatusIgnoreCase(String status);
 }
-

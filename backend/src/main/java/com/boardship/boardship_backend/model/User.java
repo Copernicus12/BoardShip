@@ -4,6 +4,8 @@ import lombok.*;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
+
 @Document("users")
 @Data
 @NoArgsConstructor
@@ -16,4 +18,6 @@ public class User {
     private String email;
     private String password;
     private String role;
+    private String status; // online/offline
+    private Instant lastSeen;
 }

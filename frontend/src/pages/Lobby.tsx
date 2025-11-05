@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageContainer from "../components/PageContainer";
 import api from '../utils/api';
@@ -19,8 +19,14 @@ type LobbyItem = {
     status?: string;
 }
 
+type LobbyStats = {
+    availableGames: number;
+    playersOnline: number;
+    gamesInProgress: number;
+}
+
 // STOMP endpoint (SockJS) – backend registers /ws
-const WS_ENDPOINT = import.meta.env.DEV ? 'http://localhost:8080/ws' : `${window.location.origin}/ws`;
+const WS_ENDPOINT = import.meta.env.VITE_WS_URL ?? '/ws';
 
 export default function Lobby() {
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -28,17 +34,47 @@ export default function Lobby() {
     const [gameMode, setGameMode] = useState('classic');
     const [isCreating, setIsCreating] = useState(false);
     const [rooms, setRooms] = useState<LobbyItem[]>([]);
+    const [stats, setStats] = useState<LobbyStats | null>(null);
+    const [loadingStats, setLoadingStats] = useState(true);
+    const [statsError, setStatsError] = useState<string | null>(null);
+    const isMountedRef = useRef(true);
     const navigate = useNavigate();
     const { user } = useAuth();
 
+    const loadStats = useCallback(async () => {
+        try {
+            const res = await api.get<LobbyStats>('/api/lobbies/stats');
+            if (!isMountedRef.current) return;
+            setStats(res.data);
+            setStatsError(null);
+        } catch (error) {
+            console.error('Failed to load lobby stats', error);
+            if (!isMountedRef.current) return;
+            setStatsError('Unable to refresh lobby stats');
+        } finally {
+            if (!isMountedRef.current) return;
+            setLoadingStats(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
     useEffect(() => {
         let client: StompClient | null = null;
+        let active = true;
 
         const connect = async () => {
             try {
                 // initial load
                 const res = await api.get('/api/lobbies');
+                if (!active) return;
                 setRooms(res.data);
+                setLoadingStats(true);
+                await loadStats();
 
                 client = new StompClient({
                     webSocketFactory: () => new SockJS(WS_ENDPOINT) as any,
@@ -53,6 +89,7 @@ export default function Lobby() {
                             if (payload && payload.deleted && payload.id) {
                                 const delId: string = payload.id;
                                 setRooms(prev => prev.filter(r => r.id !== delId));
+                                loadStats();
                                 return;
                             }
                             // server broadcasts single lobby on create/join; handle both single and array
@@ -62,6 +99,7 @@ export default function Lobby() {
                                 for (const u of updates) map.set(u.id, u);
                                 return Array.from(map.values());
                             });
+                            loadStats();
                         } catch (e) {
                             console.error('Invalid lobby update', e);
                         }
@@ -77,9 +115,10 @@ export default function Lobby() {
         connect();
 
         return () => {
+            active = false;
             try { client?.deactivate(); } catch (e) { /* ignore */ }
         };
-    }, []);
+    }, [loadStats]);
 
     const createLobbyOnServer = async () => {
         setIsCreating(true);
@@ -121,6 +160,22 @@ export default function Lobby() {
         }
     };
 
+    const fallbackAvailableGames = rooms.filter(r => (r.status ?? '').toLowerCase() === 'waiting').length;
+    const fallbackPlayersOnline = rooms.reduce((sum, room) => sum + (room.currentPlayers ?? 0), 0);
+    const fallbackGamesInProgress = rooms.filter(r => (r.status ?? '').toLowerCase() === 'in-progress').length;
+
+    const availableGamesDisplay = loadingStats || statsError
+        ? fallbackAvailableGames
+        : stats?.availableGames ?? fallbackAvailableGames;
+
+    const playersOnlineDisplay = loadingStats || statsError
+        ? fallbackPlayersOnline
+        : stats?.playersOnline ?? fallbackPlayersOnline;
+
+    const gamesInProgressDisplay = loadingStats || statsError
+        ? fallbackGamesInProgress
+        : stats?.gamesInProgress ?? fallbackGamesInProgress;
+
     return (
         <PageContainer>
             <div className="max-w-6xl mx-auto">
@@ -142,21 +197,22 @@ export default function Lobby() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                     <div className="bg-card border border-accent rounded-lg p-4">
                         <div className="text-sm text-muted mb-1">Available Games</div>
-                        <div className="text-2xl font-bold text-neon">
-                            {rooms.filter(r => r.status === 'waiting').length}
-                        </div>
+                        <div className="text-2xl font-bold text-neon">{availableGamesDisplay}</div>
                     </div>
                     <div className="bg-card border border-accent rounded-lg p-4">
                         <div className="text-sm text-muted mb-1">Players Online</div>
-                        <div className="text-2xl font-bold text-neon">{rooms.reduce((s, r) => s + (r.currentPlayers ?? 0), 0)}</div>
+                        <div className="text-2xl font-bold text-neon">{playersOnlineDisplay}</div>
                     </div>
                     <div className="bg-card border border-accent rounded-lg p-4">
                         <div className="text-sm text-muted mb-1">Games in Progress</div>
-                        <div className="text-2xl font-bold text-neon">
-                            {rooms.filter(r => r.status === 'in-progress').length}
-                        </div>
+                        <div className="text-2xl font-bold text-neon">{gamesInProgressDisplay}</div>
                     </div>
                 </div>
+                {statsError && (
+                    <div className="mb-8 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-300">
+                        ⚠️ {statsError}
+                    </div>
+                )}
 
                 {/* Game Rooms List */}
                 <div className="bg-card border border-accent rounded-xl p-6">

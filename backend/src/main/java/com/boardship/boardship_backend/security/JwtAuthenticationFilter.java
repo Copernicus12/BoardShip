@@ -1,6 +1,7 @@
 package com.boardship.backend.security;
 
 import com.boardship.backend.repository.UserRepository;
+import com.boardship.backend.service.AuthService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,6 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserRepository userRepository;
+    private final AuthService authService;
 
     @Override
     protected void doFilterInternal(
@@ -44,6 +46,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 // Load user from database
                 userRepository.findByEmail(userEmail).ifPresent(user -> {
+                    authService.refreshLastSeen(userEmail, true);
+
                     // Create authentication token
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userEmail,
@@ -64,4 +68,3 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 }
-

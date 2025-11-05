@@ -1,5 +1,11 @@
 package com.boardship.backend.controller;
 
+import com.boardship.backend.model.Lobby;
+import com.boardship.backend.model.Match;
+import com.boardship.backend.model.User;
+import com.boardship.backend.repository.LobbyRepository;
+import com.boardship.backend.repository.MatchRepository;
+import com.boardship.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -8,6 +14,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -17,6 +25,9 @@ import java.util.concurrent.ConcurrentHashMap;
 public class GameController {
 
     private final SimpMessagingTemplate messagingTemplate;
+    private final MatchRepository matchRepository;
+    private final LobbyRepository lobbyRepository;
+    private final UserRepository userRepository;
 
     // Track ready players per room: roomId -> playerId -> ships
     private final Map<String, Map<String, Object>> roomReadyPlayers = new ConcurrentHashMap<>();
@@ -32,6 +43,9 @@ public class GameController {
 
     // Track hit cells per room per player: roomId -> playerId -> Set of "row,col" strings
     private final Map<String, Map<String, java.util.Set<String>>> roomPlayerHits = new ConcurrentHashMap<>();
+
+    // Track when each room's match started to compute duration
+    private final Map<String, Instant> roomGameStart = new ConcurrentHashMap<>();
 
     @MessageMapping("/game/{roomId}/ready")
     public void playerReady(@DestinationVariable String roomId, @RequestBody Map<String, Object> payload) {
@@ -69,6 +83,7 @@ public class GameController {
             // First player in the list goes first
             String firstPlayerId = players.get(0);
             roomCurrentTurn.put(roomId, firstPlayerId);
+            roomGameStart.put(roomId, Instant.now());
 
             Map<String, Object> startMessage = Map.of(
                 "type", "GAME_START",
@@ -190,6 +205,8 @@ public class GameController {
                 // VICTORY!
                 log.info("🏆 VICTORY! Player {} has destroyed all of {}'s ships!", attackerId, defenderId);
 
+                persistMatchResult(roomId, attackerId, defenderId);
+
                 Map<String, Object> victoryMessage = Map.of(
                     "type", "GAME_OVER",
                     "winner", attackerId,
@@ -205,6 +222,7 @@ public class GameController {
                 roomCurrentTurn.remove(roomId);
                 roomAttackedCells.remove(roomId);
                 roomPlayerHits.remove(roomId);
+                roomGameStart.remove(roomId);
 
                 return; // Game is over, don't process turn changes
             }
@@ -240,6 +258,74 @@ public class GameController {
         }
     }
 
+    private void persistMatchResult(String roomId, String winnerId, String loserId) {
+        try {
+            Instant endTime = Instant.now();
+            Instant startTime = roomGameStart.get(roomId);
+            Integer durationSeconds = null;
+            if (startTime != null) {
+                long duration = Duration.between(startTime, endTime).getSeconds();
+                if (duration < 0) {
+                    duration = 0;
+                }
+                if (duration > 0 && duration < Integer.MAX_VALUE) {
+                    durationSeconds = (int) duration;
+                }
+            }
+
+            Map<String, java.util.Set<String>> hitsByPlayer = roomPlayerHits.get(roomId);
+            int winnerHits = 0;
+            int loserHits = 0;
+            if (hitsByPlayer != null) {
+                java.util.Set<String> winnerSet = hitsByPlayer.get(winnerId);
+                java.util.Set<String> loserSet = hitsByPlayer.get(loserId);
+                if (winnerSet != null) winnerHits = winnerSet.size();
+                if (loserSet != null) loserHits = loserSet.size();
+            }
+
+            String winnerScore = winnerHits + "-" + loserHits;
+            String loserScore = loserHits + "-" + winnerHits;
+
+            Lobby lobby = lobbyRepository.findById(roomId).orElse(null);
+            String mode = lobby != null && lobby.getMode() != null ? lobby.getMode() : "Classic";
+
+            User winner = userRepository.findById(winnerId).orElse(null);
+            User loser = userRepository.findById(loserId).orElse(null);
+
+            Match winnerMatch = Match.builder()
+                .playerId(winner != null ? winner.getId() : winnerId)
+                .playerUsername(winner != null ? winner.getUsername() : winnerId)
+                .opponentId(loser != null ? loser.getId() : loserId)
+                .opponentUsername(loser != null ? loser.getUsername() : loserId)
+                .mode(mode)
+                .result("won")
+                .score(winnerScore)
+                .pointsChange(null)
+                .durationSeconds(durationSeconds)
+                .playedAt(endTime)
+                .build();
+
+            Match loserMatch = Match.builder()
+                .playerId(loser != null ? loser.getId() : loserId)
+                .playerUsername(loser != null ? loser.getUsername() : loserId)
+                .opponentId(winner != null ? winner.getId() : winnerId)
+                .opponentUsername(winner != null ? winner.getUsername() : winnerId)
+                .mode(mode)
+                .result("lost")
+                .score(loserScore)
+                .pointsChange(null)
+                .durationSeconds(durationSeconds)
+                .playedAt(endTime)
+                .build();
+
+            matchRepository.saveAll(java.util.List.of(winnerMatch, loserMatch));
+
+            log.info("Saved match result for room {} (winner: {}, loser: {})", roomId, winnerId, loserId);
+        } catch (Exception e) {
+            log.error("Failed to persist match result for room {}: {}", roomId, e.getMessage(), e);
+        }
+    }
+
     @MessageMapping("/game/{roomId}/leave")
     public void leaveGame(@DestinationVariable String roomId, @RequestBody Map<String, Object> payload) {
         log.info("Player leaving room {}: {}", roomId, payload);
@@ -257,6 +343,7 @@ public class GameController {
                 roomPlayers.remove(roomId);
                 roomCurrentTurn.remove(roomId);
                 roomAttackedCells.remove(roomId);
+                roomGameStart.remove(roomId);
             }
         }
 
@@ -275,4 +362,3 @@ public class GameController {
         messagingTemplate.convertAndSend("/topic/game/" + roomId, leaveMessage);
     }
 }
-

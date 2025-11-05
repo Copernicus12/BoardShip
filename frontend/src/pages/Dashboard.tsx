@@ -1,9 +1,186 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import PageContainer from "../components/PageContainer";
+import api from '../utils/api';
 import useAuth from '../state/auth';
+
+type MatchOutcome = 'won' | 'lost' | 'draw';
+
+type RecentMatchResponse = {
+    id?: string | null;
+    opponent?: string | null;
+    mode?: string | null;
+    result?: string | null;
+    score?: string | null;
+    pointsChange?: number | null;
+    durationSeconds?: number | null;
+    playedAt?: string | null;
+};
+
+type RecentMatch = {
+    id: string;
+    opponent: string;
+    mode: string;
+    result: MatchOutcome;
+    score: string;
+    pointsChange: number | null;
+    durationSeconds: number | null;
+    playedAt: string | null;
+};
+
+const fallbackMatches: RecentMatch[] = [
+    {
+        id: 'demo-1',
+        opponent: 'SeaWolf',
+        mode: 'Ranked',
+        result: 'won',
+        score: '10-7',
+        pointsChange: 24,
+        durationSeconds: 12 * 60 + 34,
+        playedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'demo-2',
+        opponent: 'CaptainBlue',
+        mode: 'Classic',
+        result: 'won',
+        score: '10-5',
+        pointsChange: 18,
+        durationSeconds: 10 * 60 + 52,
+        playedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'demo-3',
+        opponent: 'NavyKing',
+        mode: 'Speed',
+        result: 'lost',
+        score: '8-10',
+        pointsChange: -12,
+        durationSeconds: 8 * 60 + 11,
+        playedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    },
+    {
+        id: 'demo-4',
+        opponent: 'Admiral99',
+        mode: 'Ranked',
+        result: 'won',
+        score: '10-6',
+        pointsChange: 21,
+        durationSeconds: 11 * 60 + 5,
+        playedAt: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(),
+    },
+];
+
+function normalizeResult(result?: string | null): MatchOutcome {
+    const normalized = result?.toLowerCase();
+    if (normalized === 'lost' || normalized === 'loss' || normalized === 'defeat') {
+        return 'lost';
+    }
+    if (normalized === 'draw' || normalized === 'tie') {
+        return 'draw';
+    }
+    return 'won';
+}
+
+function mapMatchResponse(match: RecentMatchResponse, index: number): RecentMatch {
+    return {
+        id: match.id ?? `${match.opponent ?? 'opponent'}-${match.playedAt ?? index}`,
+        opponent: match.opponent ?? 'Unknown',
+        mode: match.mode ?? 'Classic',
+        result: normalizeResult(match.result),
+        score: match.score ?? '—',
+        pointsChange: typeof match.pointsChange === 'number' ? match.pointsChange : null,
+        durationSeconds: typeof match.durationSeconds === 'number' ? match.durationSeconds : null,
+        playedAt: match.playedAt ?? null,
+    };
+}
+
+function formatDuration(seconds?: number | null): string | null {
+    if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds <= 0) {
+        return null;
+    }
+
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.round(seconds % 60);
+
+    if (mins === 0) {
+        return `${secs}s`;
+    }
+    if (secs === 0) {
+        return `${mins}m`;
+    }
+    return `${mins}m ${secs.toString().padStart(2, '0')}s`;
+}
+
+function formatRelativeTime(isoDate?: string | null): string {
+    if (!isoDate) return 'Recently';
+
+    const date = new Date(isoDate);
+    if (Number.isNaN(date.getTime())) return 'Recently';
+
+    const diffMs = date.getTime() - Date.now();
+    const thresholds: Array<{ limit: number; divisor: number; unit: Intl.RelativeTimeFormatUnit }> = [
+        { limit: 60, divisor: 1, unit: 'second' },
+        { limit: 60 * 60, divisor: 60, unit: 'minute' },
+        { limit: 60 * 60 * 24, divisor: 60 * 60, unit: 'hour' },
+        { limit: 60 * 60 * 24 * 7, divisor: 60 * 60 * 24, unit: 'day' },
+        { limit: 60 * 60 * 24 * 30, divisor: 60 * 60 * 24 * 7, unit: 'week' },
+        { limit: 60 * 60 * 24 * 365, divisor: 60 * 60 * 24 * 30, unit: 'month' },
+        { limit: Infinity, divisor: 60 * 60 * 24 * 365, unit: 'year' },
+    ];
+
+    const formatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+    const diffSeconds = Math.round(diffMs / 1000);
+    const absSeconds = Math.abs(diffSeconds);
+
+    for (const { limit, divisor, unit } of thresholds) {
+        if (absSeconds < limit) {
+            const value = Math.round(diffSeconds / divisor);
+            return formatter.format(value, unit);
+        }
+    }
+
+    return formatter.format(Math.round(diffSeconds / (60 * 60 * 24 * 365)), 'year');
+}
 
 export default function Dashboard() {
     const user = useAuth((state) => state.user);
+    const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
+    const [loadingMatches, setLoadingMatches] = useState(true);
+    const [matchesError, setMatchesError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let active = true;
+
+        async function loadMatches() {
+            setLoadingMatches(true);
+            try {
+                const { data } = await api.get<RecentMatchResponse[]>('/api/matches/recent?limit=5');
+                if (!active) return;
+
+                if (Array.isArray(data) && data.length > 0) {
+                    const normalized = data.map((match, index) => mapMatchResponse(match, index));
+                    setRecentMatches(normalized);
+                } else {
+                    setRecentMatches([]);
+                }
+                setMatchesError(null);
+            } catch (error) {
+                if (!active) return;
+                setMatchesError('Could not load recent matches — showing sample data for now.');
+                setRecentMatches(fallbackMatches);
+            } finally {
+                if (active) {
+                    setLoadingMatches(false);
+                }
+            }
+        }
+
+        loadMatches();
+        return () => {
+            active = false;
+        };
+    }, []);
 
     // Mock user stats - replace with real data later
     const stats = {
@@ -72,42 +249,80 @@ export default function Dashboard() {
                         </div>
 
                         <div className="space-y-3">
-                            {[
-                                { id: 1, opponent: 'SeaWolf', result: 'won', score: '10-7', mode: 'Ranked' },
-                                { id: 2, opponent: 'CaptainBlue', result: 'won', score: '10-5', mode: 'Classic' },
-                                { id: 3, opponent: 'NavyKing', result: 'lost', score: '8-10', mode: 'Speed' },
-                                { id: 4, opponent: 'Admiral99', result: 'won', score: '10-6', mode: 'Ranked' },
-                            ].map((match) => (
-                                <div
-                                    key={match.id}
-                                    className="flex items-center justify-between p-4 bg-navy/50 border border-accent/30 rounded-lg hover:border-neon/50 transition"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl ${
-                                            match.result === 'won'
-                                                ? 'bg-green-500/20 border border-green-500/50'
-                                                : 'bg-red-500/20 border border-red-500/50'
-                                        }`}>
-                                            {match.result === 'won' ? '✓' : '✗'}
-                                        </div>
-                                        <div>
-                                            <div className="font-semibold text-accent">vs {match.opponent}</div>
-                                            <div className="text-sm text-muted">{match.mode} Mode</div>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <div className={`font-bold ${
-                                            match.result === 'won' ? 'text-green-400' : 'text-red-400'
-                                        }`}>
-                                            {match.score}
-                                        </div>
-                                        <div className="text-xs text-muted">
-                                            {match.result === 'won' ? 'Victory' : 'Defeat'}
-                                        </div>
-                                    </div>
+                            {loadingMatches ? (
+                                <div className="flex flex-col items-center justify-center gap-3 py-10">
+                                    <div className="h-10 w-10 animate-spin rounded-full border-2 border-accent border-t-transparent"></div>
+                                    <p className="text-sm text-muted">Loading recent matches...</p>
                                 </div>
-                            ))}
+                            ) : recentMatches.length === 0 ? (
+                                <div className="rounded-lg border border-dashed border-accent/40 bg-navy/40 p-6 text-center text-muted">
+                                    No matches yet. Time to launch a battle!
+                                </div>
+                            ) : (
+                                recentMatches.map((match) => {
+                                    const isWin = match.result === 'won';
+                                    const isLoss = match.result === 'lost';
+
+                                    const badgeClass = isWin
+                                        ? 'bg-green-500/20 border border-green-500/50'
+                                        : isLoss
+                                            ? 'bg-red-500/20 border border-red-500/50'
+                                            : 'bg-accent/20 border border-accent/50';
+                                    const badgeIcon = isWin ? '✓' : isLoss ? '✗' : '≡';
+                                    const scoreClass = isWin ? 'text-green-400' : isLoss ? 'text-red-400' : 'text-accent';
+                                    const resultLabel = isWin ? 'Victory' : isLoss ? 'Defeat' : 'Draw';
+
+                                    const durationLabel = formatDuration(match.durationSeconds);
+                                    const relativeTime = formatRelativeTime(match.playedAt);
+                                    const metaSegments = [`${match.mode} Mode`];
+                                    if (durationLabel) metaSegments.push(durationLabel);
+                                    if (relativeTime) metaSegments.push(relativeTime);
+                                    const metaLine = metaSegments.join(' • ');
+
+                                    const points = match.pointsChange;
+                                    const hasPoints = typeof points === 'number' && !Number.isNaN(points);
+                                    const pointsClass = !hasPoints
+                                        ? 'text-muted'
+                                        : points > 0
+                                            ? 'text-green-400'
+                                            : points < 0
+                                                ? 'text-red-400'
+                                                : 'text-accent';
+                                    const pointsLabel = hasPoints ? `${points > 0 ? '+' : ''}${points} RP` : null;
+
+                                    return (
+                                        <div
+                                            key={match.id}
+                                            className="flex items-center justify-between rounded-lg border border-accent/30 bg-navy/50 p-4 transition hover:border-neon/50"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className={`flex h-12 w-12 items-center justify-center rounded-lg text-2xl ${badgeClass}`}>
+                                                    {badgeIcon}
+                                                </div>
+                                                <div>
+                                                    <div className="font-semibold text-accent">vs {match.opponent}</div>
+                                                    <div className="text-sm text-muted">{metaLine}</div>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <div className={`font-bold ${scoreClass}`}>{match.score}</div>
+                                                <div className="text-xs text-muted">{resultLabel}</div>
+                                                {pointsLabel && (
+                                                    <div className={`text-xs font-semibold ${pointsClass}`}>
+                                                        {pointsLabel}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </div>
+                        {matchesError && (
+                            <div className="mt-4 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-2 text-xs text-yellow-300">
+                                ⚠️ {matchesError}
+                            </div>
+                        )}
                     </div>
 
                     {/* Achievements & Quick Actions */}

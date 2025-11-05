@@ -36,6 +36,10 @@ const useAuth = create<AuthState>()(
             },
 
             logout() {
+                const { token } = get()
+                if (token) {
+                    api.post('/api/auth/logout').catch(() => {})
+                }
                 set({ user: null, token: null })
             },
 

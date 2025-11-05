@@ -1,6 +1,8 @@
 package com.boardship.backend.controller;
 
+import com.boardship.backend.model.GameState;
 import com.boardship.backend.model.Lobby;
+import com.boardship.backend.repository.GameStateRepository;
 import com.boardship.backend.repository.LobbyRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +32,7 @@ public class LobbyController {
     private final MongoTemplate mongoTemplate;
     private final SimpMessagingTemplate messagingTemplate;
     private final UserRepository userRepository;
+    private final GameStateRepository gameStateRepository;
 
     @GetMapping
     public ResponseEntity<List<Lobby>> listLobbies(@RequestParam(required = false) String status) {
@@ -44,6 +47,51 @@ public class LobbyController {
         return lobbyRepository.findById(id)
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<LobbyStatsResponse> getLobbyStats() {
+        long waiting = lobbyRepository.countByStatusIgnoreCase("waiting");
+        long inProgressLobbies = lobbyRepository.countByStatusIgnoreCase("in-progress");
+
+        List<GameState> activeStates = gameStateRepository.findByGamePhaseNotIgnoreCase("finished");
+        long activeGameCount = activeStates.size();
+        long gamesInProgress = Math.max(inProgressLobbies, activeGameCount);
+
+        List<Lobby> allLobbies = lobbyRepository.findAll();
+
+        int playersFromLobbies = allLobbies.stream()
+                .mapToInt(lobby -> {
+                    Integer current = lobby.getCurrentPlayers();
+                    return current != null ? Math.max(0, current) : 0;
+                })
+                .sum();
+
+        long playersFromActiveGames = activeStates.stream()
+                .flatMap(state -> java.util.stream.Stream.of(state.getPlayer1Id(), state.getPlayer2Id()))
+                .filter(id -> id != null && !id.isBlank())
+                .distinct()
+                .count();
+
+        Instant now = Instant.now();
+        long presenceWindowSeconds = 60;
+        Instant presenceThreshold = now.minusSeconds(presenceWindowSeconds);
+
+        List<User> staleUsers = userRepository.findByStatusIgnoreCaseAndLastSeenBefore("online", presenceThreshold);
+        if (!staleUsers.isEmpty()) {
+            for (User user : staleUsers) {
+                user.setStatus("offline");
+                user.setLastSeen(now);
+            }
+            userRepository.saveAll(staleUsers);
+        }
+
+        long playersOnline = userRepository.countByStatusIgnoreCase("online");
+        if (playersOnline == 0) {
+            playersOnline = Math.max(playersFromLobbies, playersFromActiveGames);
+        }
+
+        return ResponseEntity.ok(new LobbyStatsResponse(waiting, playersOnline, gamesInProgress));
     }
 
     @PostMapping
@@ -125,4 +173,6 @@ public class LobbyController {
         messagingTemplate.convertAndSend("/topic/lobbies", java.util.Map.of("id", id, "deleted", true));
         return ResponseEntity.noContent().build();
     }
+
+    public record LobbyStatsResponse(long availableGames, long playersOnline, long gamesInProgress) {}
 }

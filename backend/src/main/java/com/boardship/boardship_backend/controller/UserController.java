@@ -30,5 +30,21 @@ public class UserController {
                 })
                 .orElseGet(() -> ResponseEntity.notFound().build());
     }
-}
 
+    @GetMapping("/online")
+    public ResponseEntity<OnlineUsersResponse> getOnlineUsers() {
+        var onlineUsers = userRepository.findByStatusIgnoreCase("online");
+        var summaries = onlineUsers.stream()
+                .map(user -> new UserSummary(
+                        user.getId(),
+                        user.getUsername(),
+                        user.getEmail(),
+                        user.getLastSeen()
+                ))
+                .toList();
+        return ResponseEntity.ok(new OnlineUsersResponse(summaries.size(), summaries));
+    }
+
+    public record OnlineUsersResponse(long count, java.util.List<UserSummary> users) {}
+    public record UserSummary(String id, String username, String email, java.time.Instant lastSeen) {}
+}

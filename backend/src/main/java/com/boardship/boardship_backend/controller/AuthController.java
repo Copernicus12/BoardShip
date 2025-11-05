@@ -7,6 +7,8 @@ import com.boardship.backend.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -37,6 +39,33 @@ public class AuthController {
         return authService.validate(req.getEmail(), req.getPassword())
                 .map(u -> ResponseEntity.ok(new AuthResponse(jwtService.generate(u.getEmail()))))
                 .orElseGet(() -> ResponseEntity.status(401).build());
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(Authentication authentication) {
+        if (authentication != null && authentication.isAuthenticated()) {
+            authService.markOffline(authentication.getName());
+        }
+        SecurityContextHolder.clearContext();
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/ping")
+    public ResponseEntity<Void> ping(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).build();
+        }
+        authService.refreshLastSeen(authentication.getName(), true);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/offline")
+    public ResponseEntity<Void> goOffline(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(401).build();
+        }
+        authService.markOffline(authentication.getName());
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/test")
