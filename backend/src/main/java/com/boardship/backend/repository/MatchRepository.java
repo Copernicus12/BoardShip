@@ -10,4 +10,5 @@ import java.util.List;
 @Repository
 public interface MatchRepository extends MongoRepository<Match, String> {
     List<Match> findByPlayerIdOrderByPlayedAtDesc(String playerId, Pageable pageable);
+    List<Match> findByPlayerIdOrderByPlayedAtDesc(String playerId);
 }

@@ -515,6 +515,89 @@ public class GameController {
         }
     }
 
+    private void persistMatchResultForForfeit(String roomId, String winnerId, String loserId) {
+        try {
+            Instant endTime = Instant.now();
+            Instant startTime = roomGameStart.get(roomId);
+            Integer durationSeconds = null;
+
+            // Calculate duration if game had started
+            if (startTime != null) {
+                long duration = Duration.between(startTime, endTime).getSeconds();
+                if (duration < 0) {
+                    duration = 0;
+                }
+                if (duration > 0 && duration < Integer.MAX_VALUE) {
+                    durationSeconds = (int) duration;
+                }
+            } else {
+                // If no start time in memory, try to get from game state creation time
+                GameState gameState = gameStateRepository.findById(roomId).orElse(null);
+                if (gameState != null && gameState.getCreatedAt() != null) {
+                    long duration = Duration.between(gameState.getCreatedAt(), endTime).getSeconds();
+                    if (duration > 0 && duration < Integer.MAX_VALUE) {
+                        durationSeconds = (int) duration;
+                    }
+                }
+            }
+
+            // Get hit counts if available
+            Map<String, java.util.Set<String>> hitsByPlayer = roomPlayerHits.get(roomId);
+            int winnerHits = 0;
+            int loserHits = 0;
+            if (hitsByPlayer != null) {
+                java.util.Set<String> winnerSet = hitsByPlayer.get(winnerId);
+                java.util.Set<String> loserSet = hitsByPlayer.get(loserId);
+                if (winnerSet != null) winnerHits = winnerSet.size();
+                if (loserSet != null) loserHits = loserSet.size();
+            }
+
+            String winnerScore = winnerHits + "-" + loserHits;
+            String loserScore = loserHits + "-" + winnerHits;
+
+            // Get game mode
+            Lobby lobby = lobbyRepository.findById(roomId).orElse(null);
+            String mode = lobby != null && lobby.getMode() != null ? lobby.getMode() : "Classic";
+
+            // Get user information
+            User winner = userRepository.findById(winnerId).orElse(null);
+            User loser = userRepository.findById(loserId).orElse(null);
+
+            // Create match records
+            Match winnerMatch = Match.builder()
+                .playerId(winner != null ? winner.getId() : winnerId)
+                .playerUsername(winner != null ? winner.getUsername() : "Unknown")
+                .opponentId(loser != null ? loser.getId() : loserId)
+                .opponentUsername(loser != null ? loser.getUsername() : "Unknown")
+                .mode(mode)
+                .result("won")
+                .score(winnerScore + " (forfeit)")
+                .pointsChange(null)
+                .durationSeconds(durationSeconds)
+                .playedAt(endTime)
+                .build();
+
+            Match loserMatch = Match.builder()
+                .playerId(loser != null ? loser.getId() : loserId)
+                .playerUsername(loser != null ? loser.getUsername() : "Unknown")
+                .opponentId(winner != null ? winner.getId() : winnerId)
+                .opponentUsername(winner != null ? winner.getUsername() : "Unknown")
+                .mode(mode)
+                .result("lost")
+                .score(loserScore + " (forfeit)")
+                .pointsChange(null)
+                .durationSeconds(durationSeconds)
+                .playedAt(endTime)
+                .build();
+
+            matchRepository.saveAll(java.util.List.of(winnerMatch, loserMatch));
+
+            log.info("✅ Saved forfeit match result for room {} (winner: {}, loser: {})", roomId, winnerId, loserId);
+        } catch (Exception e) {
+            log.error("❌ Failed to persist forfeit match result for room {}: {}", roomId, e.getMessage(), e);
+        }
+    }
+
     @MessageMapping("/game/{roomId}/leave")
     public void leaveGame(@DestinationVariable String roomId, @RequestBody Map<String, Object> payload) {
         log.info("Player leaving room {}: {}", roomId, payload);
@@ -545,14 +628,19 @@ public class GameController {
 
             // Get game state to check if game was in progress
             GameState gameState = gameStateRepository.findById(roomId).orElse(null);
+
+            // Check if both players were ready (meaning the game actually started)
             boolean gameWasActive = gameState != null &&
-                (gameState.getGamePhase().equals("playing") ||
-                 gameState.getGamePhase().equals("ready") ||
-                 gameState.getGamePhase().equals("placement"));
+                gameState.isPlayer1Ready() &&
+                gameState.isPlayer2Ready() &&
+                (gameState.getGamePhase().equals("playing") || gameState.getGamePhase().equals("ready"));
 
             if (gameWasActive) {
+                log.info("Game was active, saving match result for forfeit in room {}", roomId);
                 // Persist the match result (winner by forfeit)
-                persistMatchResult(roomId, remainingPlayerId, leavingPlayerId);
+                persistMatchResultForForfeit(roomId, remainingPlayerId, leavingPlayerId);
+            } else {
+                log.info("Game was not fully started yet (both players not ready), not saving match result for room {}", roomId);
             }
 
             // Notify remaining player of victory

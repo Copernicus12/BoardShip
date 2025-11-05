@@ -28,6 +28,15 @@ type RecentMatch = {
     playedAt: string | null;
 };
 
+type UserStats = {
+    totalGames: number;
+    wins: number;
+    losses: number;
+    winRate: number;
+    currentStreak: number;
+    bestStreak: number;
+};
+
 const fallbackMatches: RecentMatch[] = [
     {
         id: 'demo-1',
@@ -148,6 +157,15 @@ export default function Dashboard() {
     const [recentMatches, setRecentMatches] = useState<RecentMatch[]>([]);
     const [loadingMatches, setLoadingMatches] = useState(true);
     const [matchesError, setMatchesError] = useState<string | null>(null);
+    const [stats, setStats] = useState<UserStats>({
+        totalGames: 0,
+        wins: 0,
+        losses: 0,
+        winRate: 0,
+        currentStreak: 0,
+        bestStreak: 0,
+    });
+    const [loadingStats, setLoadingStats] = useState(true);
 
     useEffect(() => {
         let active = true;
@@ -182,17 +200,32 @@ export default function Dashboard() {
         };
     }, []);
 
-    // Mock user stats - replace with real data later
-    const stats = {
-        totalGames: 47,
-        wins: 32,
-        losses: 15,
-        winRate: 68,
-        currentStreak: 5,
-        bestStreak: 12,
-        rank: 'Gold II',
-        points: 2458
-    };
+    useEffect(() => {
+        let active = true;
+
+        async function loadStats() {
+            setLoadingStats(true);
+            try {
+                const { data } = await api.get<UserStats>('/api/users/stats');
+                if (!active) return;
+
+                setStats(data);
+            } catch (error) {
+                if (!active) return;
+                console.error('Could not load user stats:', error);
+                // Keep default stats on error
+            } finally {
+                if (active) {
+                    setLoadingStats(false);
+                }
+            }
+        }
+
+        loadStats();
+        return () => {
+            active = false;
+        };
+    }, []);
 
     const recentAchievements = [
         { id: 1, name: 'First Victory', icon: '🏆', date: 'Today' },
@@ -215,26 +248,50 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                     <div className="bg-card border border-accent rounded-xl p-6 hover:border-neon transition">
                         <div className="text-sm text-muted mb-2">Total Games</div>
-                        <div className="text-3xl font-bold text-neon mb-1">{stats.totalGames}</div>
+                        {loadingStats ? (
+                            <div className="h-9 flex items-center">
+                                <div className="h-6 w-16 animate-pulse rounded bg-accent/20"></div>
+                            </div>
+                        ) : (
+                            <div className="text-3xl font-bold text-neon mb-1">{stats.totalGames}</div>
+                        )}
                         <div className="text-xs text-accent">All time</div>
                     </div>
 
                     <div className="bg-card border border-accent rounded-xl p-6 hover:border-neon transition">
                         <div className="text-sm text-muted mb-2">Win Rate</div>
-                        <div className="text-3xl font-bold text-green-400 mb-1">{stats.winRate}%</div>
-                        <div className="text-xs text-accent">{stats.wins}W - {stats.losses}L</div>
+                        {loadingStats ? (
+                            <div className="h-9 flex items-center">
+                                <div className="h-6 w-16 animate-pulse rounded bg-accent/20"></div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="text-3xl font-bold text-green-400 mb-1">
+                                    {stats.winRate.toFixed(0)}%
+                                </div>
+                                <div className="text-xs text-accent">{stats.wins}W - {stats.losses}L</div>
+                            </>
+                        )}
                     </div>
 
                     <div className="bg-card border border-accent rounded-xl p-6 hover:border-neon transition">
                         <div className="text-sm text-muted mb-2">Current Streak</div>
-                        <div className="text-3xl font-bold text-neon mb-1">🔥 {stats.currentStreak}</div>
-                        <div className="text-xs text-accent">Best: {stats.bestStreak}</div>
+                        {loadingStats ? (
+                            <div className="h-9 flex items-center">
+                                <div className="h-6 w-16 animate-pulse rounded bg-accent/20"></div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="text-3xl font-bold text-neon mb-1">🔥 {stats.currentStreak}</div>
+                                <div className="text-xs text-accent">Best: {stats.bestStreak}</div>
+                            </>
+                        )}
                     </div>
 
                     <div className="bg-card border border-accent rounded-xl p-6 hover:border-neon transition">
                         <div className="text-sm text-muted mb-2">Rank</div>
-                        <div className="text-3xl font-bold text-neon mb-1">{stats.rank}</div>
-                        <div className="text-xs text-accent">{stats.points} points</div>
+                        <div className="text-3xl font-bold text-neon mb-1">—</div>
+                        <div className="text-xs text-accent">Coming soon</div>
                     </div>
                 </div>
 
@@ -355,20 +412,17 @@ export default function Dashboard() {
                                 <Link
                                     to="/lobby"
                                     className="block w-full px-4 py-3 bg-neon text-navy font-bold rounded-lg hover:opacity-90 transition text-center"
-                                >
-                                    ⚔️ Play Now
+                                >   Play Now
                                 </Link>
                                 <Link
                                     to="/leaderboard"
                                     className="block w-full px-4 py-3 bg-navy border border-accent text-accent font-semibold rounded-lg hover:border-neon hover:text-neon transition text-center"
-                                >
-                                    📊 Leaderboard
+                                >   Leaderboard
                                 </Link>
                                 <Link
                                     to="/profile"
                                     className="block w-full px-4 py-3 bg-navy border border-accent text-accent font-semibold rounded-lg hover:border-neon hover:text-neon transition text-center"
-                                >
-                                    👤 My Profile
+                                >   My Profile
                                 </Link>
                             </div>
                         </div>
