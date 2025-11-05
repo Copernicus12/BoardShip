@@ -38,6 +38,8 @@ export default function Game() {
     const [myAttacks, setMyAttacks] = useState<Array<{row: number, col: number, isHit: boolean}>>([]);
     const [opponentAttacks, setOpponentAttacks] = useState<Array<{row: number, col: number, isHit: boolean}>>([]);
     const [winner, setWinner] = useState<string | null>(null);
+    const [winReason, setWinReason] = useState<string | null>(null);
+    const [gameOverMessage, setGameOverMessage] = useState<string | null>(null);
     const stompClientRef = useRef<StompClient | null>(null);
 
     const deleteLobbyIfHost = useCallback(async () => {
@@ -221,6 +223,17 @@ export default function Game() {
                         setGamePhase('finished');
                         setWinner(payload.winner);
                         setIsMyTurn(false);
+
+                        // Save win/loss reason
+                        if (payload.reason) {
+                            setWinReason(payload.reason);
+                        }
+
+                        // Save game over message (e.g., "PlayerName left the game")
+                        if (payload.message) {
+                            setGameOverMessage(payload.message);
+                            console.log('Game over message:', payload.message);
+                        }
                     }
                 } catch (e) {
                     console.error('Invalid game update', e);
@@ -263,12 +276,27 @@ export default function Game() {
     const handleLeaveToLobby = useCallback(async () => {
         hostLeaveIntentRef.current = true;
 
+        // Send leave message to backend
+        if (stompClientRef.current && roomId && user) {
+            try {
+                stompClientRef.current.publish({
+                    destination: `/app/game/${roomId}/leave`,
+                    body: JSON.stringify({
+                        playerId: user.id
+                    })
+                });
+                console.log('Sent leave message to backend');
+            } catch (error) {
+                console.error('Failed to send leave message:', error);
+            }
+        }
+
         try {
             await deleteLobbyIfHost();
         } finally {
             navigate('/lobby');
         }
-    }, [deleteLobbyIfHost, navigate]);
+    }, [deleteLobbyIfHost, navigate, roomId, user, stompClientRef]);
 
 
     const handleShipPlacementComplete = (ships: PlacedShip[]) => {
@@ -366,6 +394,14 @@ export default function Game() {
                 {gamePhase === 'placement' && (
                     <div className="max-w-2xl mx-auto">
                         <ShipPlacement onPlacementComplete={handleShipPlacementComplete} />
+                        <div className="mt-6 text-center">
+                            <button
+                                onClick={handleLeaveToLobby}
+                                className="px-6 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/50 transition-all"
+                            >
+                                Leave Game
+                            </button>
+                        </div>
                     </div>
                 )}
 
@@ -401,9 +437,19 @@ export default function Game() {
                             {winner === user?.id ? 'VICTORY!' : 'DEFEAT'}
                         </h2>
                         <p className="text-gray-300 text-xl mb-8">
-                            {winner === user?.id
-                                ? '🎯 You destroyed all enemy ships!'
-                                : '💥 All your ships were destroyed!'}
+                            {winReason === 'forfeit' && gameOverMessage ? (
+                                // Display forfeit message
+                                winner === user?.id ? (
+                                    <>🎉 {gameOverMessage}</>
+                                ) : (
+                                    <>😔 You left the game</>
+                                )
+                            ) : (
+                                // Display normal win/loss message
+                                winner === user?.id
+                                    ? '🎯 You destroyed all enemy ships!'
+                                    : '💥 All your ships were destroyed!'
+                            )}
                         </p>
                         <div className="flex justify-center gap-4">
                             <button

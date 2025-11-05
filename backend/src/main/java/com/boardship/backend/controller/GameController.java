@@ -519,12 +519,67 @@ public class GameController {
     public void leaveGame(@DestinationVariable String roomId, @RequestBody Map<String, Object> payload) {
         log.info("Player leaving room {}: {}", roomId, payload);
 
-        String playerId = (String) payload.get("playerId");
+        String leavingPlayerId = (String) payload.get("playerId");
+
+        // Get player username
+        User leavingUser = userRepository.findById(leavingPlayerId).orElse(null);
+        String leavingPlayerUsername = leavingUser != null ? leavingUser.getUsername() : leavingPlayerId;
+
+        // Check if there's an opponent to declare as winner
+        java.util.List<String> players = roomPlayers.get(roomId);
+        String remainingPlayerId = null;
+
+        if (players != null && players.size() == 2) {
+            // Find the remaining player
+            for (String playerId : players) {
+                if (!playerId.equals(leavingPlayerId)) {
+                    remainingPlayerId = playerId;
+                    break;
+                }
+            }
+        }
+
+        // If there's a remaining player, declare them as winner
+        if (remainingPlayerId != null) {
+            log.info("Player {} left, declaring {} as winner by forfeit", leavingPlayerId, remainingPlayerId);
+
+            // Get game state to check if game was in progress
+            GameState gameState = gameStateRepository.findById(roomId).orElse(null);
+            boolean gameWasActive = gameState != null &&
+                (gameState.getGamePhase().equals("playing") ||
+                 gameState.getGamePhase().equals("ready") ||
+                 gameState.getGamePhase().equals("placement"));
+
+            if (gameWasActive) {
+                // Persist the match result (winner by forfeit)
+                persistMatchResult(roomId, remainingPlayerId, leavingPlayerId);
+            }
+
+            // Notify remaining player of victory
+            Map<String, Object> victoryMessage = Map.of(
+                "type", "GAME_OVER",
+                "winner", remainingPlayerId,
+                "loser", leavingPlayerId,
+                "reason", "forfeit",
+                "message", leavingPlayerUsername + " left the game"
+            );
+
+            messagingTemplate.convertAndSend("/topic/game/" + roomId, victoryMessage);
+        } else {
+            // Just notify that player left (no opponent to declare as winner)
+            Map<String, Object> leaveMessage = Map.of(
+                "type", "PLAYER_LEFT",
+                "playerId", leavingPlayerId,
+                "username", leavingPlayerUsername
+            );
+
+            messagingTemplate.convertAndSend("/topic/game/" + roomId, leaveMessage);
+        }
 
         // Clean up ready players for this room
         Map<String, Object> readyPlayers = roomReadyPlayers.get(roomId);
         if (readyPlayers != null) {
-            readyPlayers.remove(playerId);
+            readyPlayers.remove(leavingPlayerId);
 
             // If room is now empty, remove it
             if (readyPlayers.isEmpty()) {
@@ -532,22 +587,20 @@ public class GameController {
                 roomPlayers.remove(roomId);
                 roomCurrentTurn.remove(roomId);
                 roomAttackedCells.remove(roomId);
+                roomPlayerHits.remove(roomId);
                 roomGameStart.remove(roomId);
             }
         }
 
         // Remove from players list
-        java.util.List<String> players = roomPlayers.get(roomId);
         if (players != null) {
-            players.remove(playerId);
+            players.remove(leavingPlayerId);
         }
 
-        // Notify other players
-        Map<String, Object> leaveMessage = Map.of(
-            "type", "PLAYER_LEFT",
-            "playerId", playerId
-        );
-
-        messagingTemplate.convertAndSend("/topic/game/" + roomId, leaveMessage);
+        // Clean up game state from database
+        if (gameStateRepository.existsById(roomId)) {
+            gameStateRepository.deleteById(roomId);
+            log.info("Cleaned up game state from database for room {}", roomId);
+        }
     }
 }
