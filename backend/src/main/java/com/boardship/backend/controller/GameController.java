@@ -1,8 +1,10 @@
 package com.boardship.backend.controller;
 
+import com.boardship.backend.model.GameState;
 import com.boardship.backend.model.Lobby;
 import com.boardship.backend.model.Match;
 import com.boardship.backend.model.User;
+import com.boardship.backend.repository.GameStateRepository;
 import com.boardship.backend.repository.LobbyRepository;
 import com.boardship.backend.repository.MatchRepository;
 import com.boardship.backend.repository.UserRepository;
@@ -28,6 +30,7 @@ public class GameController {
     private final MatchRepository matchRepository;
     private final LobbyRepository lobbyRepository;
     private final UserRepository userRepository;
+    private final GameStateRepository gameStateRepository;
 
     // Track ready players per room: roomId -> playerId -> ships
     private final Map<String, Map<String, Object>> roomReadyPlayers = new ConcurrentHashMap<>();
@@ -52,6 +55,8 @@ public class GameController {
         log.info("Player ready in room {}: {}", roomId, payload);
 
         String playerId = (String) payload.get("playerId");
+        @SuppressWarnings("unchecked")
+        java.util.List<Map<String, Object>> ships = (java.util.List<Map<String, Object>>) payload.get("ships");
 
         // Initialize room if not exists
         roomReadyPlayers.putIfAbsent(roomId, new ConcurrentHashMap<>());
@@ -66,7 +71,51 @@ public class GameController {
         }
 
         // Mark this player as ready and store their ships
-        readyPlayers.put(playerId, payload.get("ships"));
+        readyPlayers.put(playerId, ships);
+
+        // Persist to database
+        GameState gameState = gameStateRepository.findById(roomId).orElse(null);
+        if (gameState == null) {
+            // Create new game state
+            Lobby lobby = lobbyRepository.findById(roomId).orElse(null);
+            if (lobby != null) {
+                gameState = GameState.builder()
+                    .id(roomId)
+                    .player1Id(lobby.getHostId())
+                    .player2Id(null) // Will be set when second player joins
+                    .gamePhase("placement")
+                    .createdAt(Instant.now())
+                    .updatedAt(Instant.now())
+                    .build();
+            }
+        }
+
+        if (gameState != null) {
+            // Determine which player is submitting ships
+            if (playerId.equals(gameState.getPlayer1Id())) {
+                gameState.setPlayer1Ships(ships);
+                gameState.setPlayer1Ready(true);
+            } else {
+                // This is player 2
+                if (gameState.getPlayer2Id() == null) {
+                    gameState.setPlayer2Id(playerId);
+                }
+                gameState.setPlayer2Ships(ships);
+                gameState.setPlayer2Ready(true);
+            }
+            gameState.setUpdatedAt(Instant.now());
+
+            // Check if both players are ready
+            if (gameState.isPlayer1Ready() && gameState.isPlayer2Ready()) {
+                gameState.setGamePhase("playing");
+                gameState.setCurrentTurn(gameState.getPlayer1Id()); // Player 1 goes first
+            } else {
+                gameState.setGamePhase("ready");
+            }
+
+            gameStateRepository.save(gameState);
+            log.info("Persisted game state for room {}", roomId);
+        }
 
         // Notify other players that this player is ready
         Map<String, Object> readyMessage = Map.of(
@@ -100,6 +149,9 @@ public class GameController {
         log.info("Attack in room {}: {}", roomId, payload);
 
         String attackerId = (String) payload.get("playerId");
+
+        // Initialize room state from database if needed
+        ensureRoomStateLoaded(roomId);
 
         // Validate it's this player's turn
         String currentPlayer = roomCurrentTurn.get(roomId);
@@ -186,6 +238,9 @@ public class GameController {
 
         messagingTemplate.convertAndSend("/topic/game/" + roomId, attackMessage);
 
+        // Persist attack to database
+        persistAttackToGameState(roomId, attackerId, row, col, isHit);
+
         // Check for victory - count total ship positions for defender
         if (isHit && defenderShips != null) {
             int totalShipCells = 0;
@@ -216,13 +271,17 @@ public class GameController {
 
                 messagingTemplate.convertAndSend("/topic/game/" + roomId, victoryMessage);
 
-                // Clean up room data
+                // Clean up room data from memory
                 roomReadyPlayers.remove(roomId);
                 roomPlayers.remove(roomId);
                 roomCurrentTurn.remove(roomId);
                 roomAttackedCells.remove(roomId);
                 roomPlayerHits.remove(roomId);
                 roomGameStart.remove(roomId);
+
+                // Clean up from database
+                gameStateRepository.deleteById(roomId);
+                log.info("Cleaned up game state from database for room {}", roomId);
 
                 return; // Game is over, don't process turn changes
             }
@@ -233,6 +292,9 @@ public class GameController {
             // MISS - change turn to opponent
             String nextPlayer = defenderId;
             roomCurrentTurn.put(roomId, nextPlayer);
+
+            // Update turn in database
+            updateCurrentTurnInDatabase(roomId, nextPlayer);
 
             log.info("MISS! Turn switched from {} to {} in room {}", attackerId, nextPlayer, roomId);
 
@@ -255,6 +317,133 @@ public class GameController {
             );
 
             messagingTemplate.convertAndSend("/topic/game/" + roomId, keepTurnMessage);
+        }
+    }
+
+    private void persistAttackToGameState(String roomId, String attackerId, int row, int col, boolean isHit) {
+        try {
+            GameState gameState = gameStateRepository.findById(roomId).orElse(null);
+            if (gameState == null) {
+                log.warn("Game state not found for room {} when persisting attack", roomId);
+                return;
+            }
+
+            // Create attack record
+            Map<String, Object> attack = Map.of(
+                "row", row,
+                "col", col,
+                "isHit", isHit
+            );
+
+            // Determine which player made the attack
+            if (attackerId.equals(gameState.getPlayer1Id())) {
+                // Player 1 attacked
+                java.util.List<Map<String, Object>> attacks = gameState.getPlayer1Attacks();
+                if (attacks == null) {
+                    attacks = new java.util.ArrayList<>();
+                }
+                attacks.add(attack);
+                gameState.setPlayer1Attacks(attacks);
+            } else {
+                // Player 2 attacked
+                java.util.List<Map<String, Object>> attacks = gameState.getPlayer2Attacks();
+                if (attacks == null) {
+                    attacks = new java.util.ArrayList<>();
+                }
+                attacks.add(attack);
+                gameState.setPlayer2Attacks(attacks);
+            }
+
+            gameState.setUpdatedAt(Instant.now());
+            gameStateRepository.save(gameState);
+            log.info("Persisted attack from {} at [{}, {}] to database", attackerId, row, col);
+        } catch (Exception e) {
+            log.error("Failed to persist attack to database for room {}: {}", roomId, e.getMessage(), e);
+        }
+    }
+
+    private void updateCurrentTurnInDatabase(String roomId, String playerId) {
+        try {
+            GameState gameState = gameStateRepository.findById(roomId).orElse(null);
+            if (gameState != null) {
+                gameState.setCurrentTurn(playerId);
+                gameState.setUpdatedAt(Instant.now());
+                gameStateRepository.save(gameState);
+                log.info("Updated current turn to {} in database for room {}", playerId, roomId);
+            }
+        } catch (Exception e) {
+            log.error("Failed to update turn in database for room {}: {}", roomId, e.getMessage(), e);
+        }
+    }
+
+    private void ensureRoomStateLoaded(String roomId) {
+        // Check if room state is already in memory
+        if (roomReadyPlayers.containsKey(roomId) && !roomReadyPlayers.get(roomId).isEmpty()) {
+            return; // Already loaded
+        }
+
+        // Try to load from database
+        GameState gameState = gameStateRepository.findById(roomId).orElse(null);
+        if (gameState != null && gameState.isPlayer1Ready() && gameState.isPlayer2Ready()) {
+            log.info("Loading game state from database for room {}", roomId);
+
+            // Initialize memory structures
+            roomReadyPlayers.putIfAbsent(roomId, new ConcurrentHashMap<>());
+            roomPlayers.putIfAbsent(roomId, new java.util.ArrayList<>());
+            roomAttackedCells.putIfAbsent(roomId, java.util.concurrent.ConcurrentHashMap.newKeySet());
+            roomPlayerHits.putIfAbsent(roomId, new ConcurrentHashMap<>());
+
+            Map<String, Object> readyPlayers = roomReadyPlayers.get(roomId);
+            java.util.List<String> players = roomPlayers.get(roomId);
+            java.util.Set<String> attackedCells = roomAttackedCells.get(roomId);
+            Map<String, java.util.Set<String>> playerHits = roomPlayerHits.get(roomId);
+
+            // Add players and their ships
+            if (gameState.getPlayer1Id() != null && gameState.getPlayer1Ships() != null) {
+                players.add(gameState.getPlayer1Id());
+                readyPlayers.put(gameState.getPlayer1Id(), gameState.getPlayer1Ships());
+                playerHits.putIfAbsent(gameState.getPlayer1Id(), java.util.concurrent.ConcurrentHashMap.newKeySet());
+            }
+
+            if (gameState.getPlayer2Id() != null && gameState.getPlayer2Ships() != null) {
+                players.add(gameState.getPlayer2Id());
+                readyPlayers.put(gameState.getPlayer2Id(), gameState.getPlayer2Ships());
+                playerHits.putIfAbsent(gameState.getPlayer2Id(), java.util.concurrent.ConcurrentHashMap.newKeySet());
+            }
+
+            // Restore attacks
+            if (gameState.getPlayer1Attacks() != null) {
+                for (Map<String, Object> attack : gameState.getPlayer1Attacks()) {
+                    int row = ((Number) attack.get("row")).intValue();
+                    int col = ((Number) attack.get("col")).intValue();
+                    boolean isHit = (Boolean) attack.get("isHit");
+                    String cellKey = row + "," + col;
+                    attackedCells.add(cellKey);
+                    if (isHit && gameState.getPlayer1Id() != null) {
+                        playerHits.get(gameState.getPlayer1Id()).add(cellKey);
+                    }
+                }
+            }
+
+            if (gameState.getPlayer2Attacks() != null) {
+                for (Map<String, Object> attack : gameState.getPlayer2Attacks()) {
+                    int row = ((Number) attack.get("row")).intValue();
+                    int col = ((Number) attack.get("col")).intValue();
+                    boolean isHit = (Boolean) attack.get("isHit");
+                    String cellKey = row + "," + col;
+                    attackedCells.add(cellKey);
+                    if (isHit && gameState.getPlayer2Id() != null) {
+                        playerHits.get(gameState.getPlayer2Id()).add(cellKey);
+                    }
+                }
+            }
+
+            // Set current turn
+            if (gameState.getCurrentTurn() != null) {
+                roomCurrentTurn.put(roomId, gameState.getCurrentTurn());
+            }
+
+            log.info("Successfully loaded game state from database for room {}", roomId);
         }
     }
 

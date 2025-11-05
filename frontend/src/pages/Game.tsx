@@ -73,7 +73,82 @@ export default function Game() {
                     // Check if there are 2 players
                     if (lobby.currentPlayers >= 2) {
                         setOpponentConnected(true);
-                        setGamePhase('placement');
+
+                        // Check for existing game state
+                        try {
+                            const gameStateRes = await api.get(`/api/game-state/${roomId}`);
+                            const gameState = gameStateRes.data;
+                            console.log('Game state loaded:', gameState);
+
+                            // Determine which player we are
+                            const isPlayer1 = user && gameState.player1Id === user.id;
+                            const isPlayer2 = user && gameState.player2Id === user.id;
+
+                            if (isPlayer1 && gameState.player1Ships && gameState.player1Ready) {
+                                // Player 1 has already placed ships
+                                console.log('Restoring player 1 ships from database');
+                                setMyShips(gameState.player1Ships);
+
+                                // Restore my attacks (player 1's attacks on player 2)
+                                if (gameState.player1Attacks && Array.isArray(gameState.player1Attacks)) {
+                                    console.log('Restoring player 1 attacks:', gameState.player1Attacks);
+                                    setMyAttacks(gameState.player1Attacks);
+                                }
+
+                                // Restore opponent's attacks (player 2's attacks on player 1)
+                                if (gameState.player2Attacks && Array.isArray(gameState.player2Attacks)) {
+                                    console.log('Restoring opponent attacks on player 1:', gameState.player2Attacks);
+                                    setOpponentAttacks(gameState.player2Attacks);
+                                }
+
+                                if (gameState.gamePhase === 'playing') {
+                                    setGamePhase('playing');
+                                    setIsMyTurn(gameState.currentTurn === user.id);
+                                    setOpponentReady(true);
+                                } else {
+                                    setGamePhase('ready');
+                                    setOpponentReady(gameState.player2Ready || false);
+                                }
+                            } else if (isPlayer2 && gameState.player2Ships && gameState.player2Ready) {
+                                // Player 2 has already placed ships
+                                console.log('Restoring player 2 ships from database');
+                                setMyShips(gameState.player2Ships);
+
+                                // Restore my attacks (player 2's attacks on player 1)
+                                if (gameState.player2Attacks && Array.isArray(gameState.player2Attacks)) {
+                                    console.log('Restoring player 2 attacks:', gameState.player2Attacks);
+                                    setMyAttacks(gameState.player2Attacks);
+                                }
+
+                                // Restore opponent's attacks (player 1's attacks on player 2)
+                                if (gameState.player1Attacks && Array.isArray(gameState.player1Attacks)) {
+                                    console.log('Restoring opponent attacks on player 2:', gameState.player1Attacks);
+                                    setOpponentAttacks(gameState.player1Attacks);
+                                }
+
+                                if (gameState.gamePhase === 'playing') {
+                                    setGamePhase('playing');
+                                    setIsMyTurn(gameState.currentTurn === user.id);
+                                    setOpponentReady(true);
+                                } else {
+                                    setGamePhase('ready');
+                                    setOpponentReady(gameState.player1Ready || false);
+                                }
+                            } else {
+                                // No ships placed yet, go to placement
+                                setGamePhase('placement');
+
+                                // Check if opponent is ready
+                                if (isPlayer1 && gameState.player2Ready) {
+                                    setOpponentReady(true);
+                                } else if (isPlayer2 && gameState.player1Ready) {
+                                    setOpponentReady(true);
+                                }
+                            }
+                        } catch (e) {
+                            console.log('No existing game state, starting fresh');
+                            setGamePhase('placement');
+                        }
                     } else {
                         setGamePhase('waiting');
                     }

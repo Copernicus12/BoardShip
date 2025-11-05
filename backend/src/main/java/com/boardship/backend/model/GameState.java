@@ -8,6 +8,8 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 
 @Document("game_states")
 @Data
@@ -26,6 +28,19 @@ public class GameState {
 
     private String gamePhase; // waiting, placement, ready, playing, finished
     private String currentTurn;
+
+    // Ship placements for each player
+    private List<Map<String, Object>> player1Ships;
+    private List<Map<String, Object>> player2Ships;
+
+    // Track if players are ready
+    private boolean player1Ready;
+    private boolean player2Ready;
+
+    // Track attacks made by each player (on opponent's board)
+    // Each attack is a map with: row, col, isHit
+    private List<Map<String, Object>> player1Attacks; // Player 1's attacks on Player 2
+    private List<Map<String, Object>> player2Attacks; // Player 2's attacks on Player 1
 
     private Instant createdAt;
     private Instant updatedAt;
