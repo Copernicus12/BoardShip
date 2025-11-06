@@ -459,223 +459,538 @@ export default function Game() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-[#0b1220] via-[#101a2e] to-[#0b1220] p-3 sm:p-6">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="mb-6">
-                    <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2">
-                        🚢 Battleship - Room {roomId?.substring(0, 8)}
+                <div className="mb-4 sm:mb-6">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon via-cyan to-accent mb-2 animate-pulse">
+                        🚢 Battleship Arena
                     </h1>
-                    <div className="flex gap-4 items-center text-sm">
-                        <span className={`px-3 py-1 rounded-full ${
-                            gamePhase === 'waiting' ? 'bg-yellow-500/20 text-yellow-400' :
-                            gamePhase === 'placement' ? 'bg-blue-500/20 text-blue-400' :
-                            gamePhase === 'ready' ? 'bg-purple-500/20 text-purple-400' :
-                            gamePhase === 'finished' ? (winner === user?.id ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400') :
-                            isMyTurn ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                    <div className="flex flex-wrap gap-2 sm:gap-3 items-center text-xs sm:text-sm">
+                        <span className={`px-2 sm:px-3 py-1 rounded-full font-semibold border backdrop-blur-sm transition-all duration-300 ${
+                            gamePhase === 'waiting' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 shadow-lg shadow-yellow-500/20' :
+                            gamePhase === 'placement' ? 'bg-blue-500/20 text-blue-400 border-blue-500/50 shadow-lg shadow-blue-500/20' :
+                            gamePhase === 'ready' ? 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-lg shadow-purple-500/20 animate-pulse' :
+                            gamePhase === 'finished' ? (winner === user?.id ? 'bg-green-500/20 text-green-400 border-green-500/50 shadow-lg shadow-green-500/20' : 'bg-red-500/20 text-red-400 border-red-500/50 shadow-lg shadow-red-500/20') :
+                            isMyTurn ? 'bg-green-500/20 text-green-400 border-green-500/50 shadow-lg shadow-green-500/20 animate-pulse' : 'bg-red-500/20 text-red-400 border-red-500/50 shadow-lg shadow-red-500/20'
                         }`}>
                             {gamePhase === 'waiting' && '⏳ Waiting for opponent...'}
                             {gamePhase === 'placement' && '📍 Place your ships'}
-                            {gamePhase === 'ready' && '⏰ Waiting for opponent to be ready...'}
+                            {gamePhase === 'ready' && '⏰ Waiting for opponent...'}
                             {gamePhase === 'playing' && (isMyTurn ? '🎯 Your Turn' : '⏳ Opponent\'s Turn')}
                             {gamePhase === 'finished' && (winner === user?.id ? '🏆 Victory!' : '💀 Defeat')}
                         </span>
-                        <span className="text-cyan-400">
-                            Players: <span className="font-bold">{opponentConnected ? '2/2' : '1/2'}</span>
+                        <span className="px-2 sm:px-3 py-1 rounded-full bg-accent/10 border border-accent/30 text-accent font-semibold">
+                            👥 {opponentConnected ? '2/2' : '1/2'}
                         </span>
-                        <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 capitalize">
-                            {gameMode} Mode
+                        <span className={`px-2 sm:px-3 py-1 rounded-full font-semibold border ${
+                            gameMode === 'speed' ? 'bg-orange-500/20 text-orange-300 border-orange-500/40' :
+                            gameMode === 'ranked' ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' :
+                            'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                        }`}>
+                            {gameMode === 'speed' && '⚡ Speed'}
+                            {gameMode === 'ranked' && '🏆 Ranked'}
+                            {gameMode === 'classic' && '⚓ Classic'}
                         </span>
                         {gameMode === 'speed' && gamePhase === 'playing' && turnTimeLimit > 0 && (
-                            <span className={`px-3 py-1 rounded-full font-bold ${
+                            <span className={`px-2 sm:px-3 py-1 rounded-full font-bold border transition-all duration-300 ${
                                 isMyTurn ? (
-                                    turnTimeRemaining <= 1 ? 'bg-red-500/30 text-red-300 animate-pulse' : 
-                                    turnTimeRemaining <= 2 ? 'bg-orange-500/30 text-orange-300' : 
-                                    'bg-green-500/20 text-green-300'
+                                    turnTimeRemaining <= 1 ? 'bg-red-500/30 text-red-300 border-red-500/50 animate-pulse shadow-lg shadow-red-500/30' : 
+                                    turnTimeRemaining <= 2 ? 'bg-orange-500/30 text-orange-300 border-orange-500/50 shadow-lg shadow-orange-500/30' : 
+                                    'bg-green-500/20 text-green-300 border-green-500/50 shadow-lg shadow-green-500/30'
                                 ) : (
-                                    'bg-blue-500/20 text-blue-300'
+                                    'bg-blue-500/20 text-blue-300 border-blue-500/50'
                                 )
                             }`}>
-                                ⏱️ {turnTimeRemaining}s {!isMyTurn && '(Opponent)'}
+                                ⏱️ {turnTimeRemaining}s {!isMyTurn && <span className="hidden sm:inline">(Opponent)</span>}
                             </span>
                         )}
                         {isHost && (
-                            <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400">
+                            <span className="px-2 sm:px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/50 font-semibold">
                                 👑 Host
                             </span>
                         )}
                     </div>
                 </div>
 
-                {/* Waiting Phase */}
+                {/* Waiting Phase - Elegant Waiting Room */}
                 {gamePhase === 'waiting' && (
-                    <div className="bg-slate-800/50 rounded-lg p-12 border border-cyan-500/30 text-center">
-                        <div className="text-6xl mb-4">⏳</div>
-                        <h2 className="text-3xl font-bold text-cyan-400 mb-3">Waiting for Opponent</h2>
-                        <p className="text-gray-300 mb-6">
-                            Share this room code with your friend: <span className="font-mono text-cyan-300 text-xl">{roomId?.substring(0, 8)}</span>
-                        </p>
-                        <div className="flex justify-center gap-3">
-                            <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-                            <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                            <div className="w-3 h-3 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                    <div className="relative overflow-hidden">
+                        {/* Background gradient effects */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-neon/5 via-transparent to-accent/5 blur-3xl"></div>
+                        <div className="absolute top-0 left-1/4 w-64 h-64 bg-neon/10 rounded-full blur-3xl animate-pulse"></div>
+                        <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+
+                        <div className="relative bg-card/30 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-6 sm:p-12 md:p-16 border border-accent/30 shadow-2xl shadow-neon/10 text-center">
+                            {/* Animated icon */}
+                            <div className="relative inline-block mb-6 sm:mb-8">
+                                <div className="text-6xl sm:text-8xl md:text-9xl animate-bounce">⚓</div>
+                                <div className="absolute -inset-4 bg-gradient-to-r from-neon to-accent rounded-full blur-2xl opacity-20 animate-pulse"></div>
+                            </div>
+
+                            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon via-cyan to-accent mb-4 sm:mb-6">
+                                Waiting for Opponent
+                            </h2>
+
+                            <p className="text-base sm:text-lg md:text-xl text-muted mb-4 sm:mb-6 max-w-2xl mx-auto">
+                                Share this room code with your friend to start the battle
+                            </p>
+
+                            {/* Room Code Display */}
+                            <div className="inline-block mb-6 sm:mb-8 relative group">
+                                <div className="absolute inset-0 bg-gradient-to-r from-neon to-accent rounded-xl blur-xl opacity-30 group-hover:opacity-50 transition-opacity"></div>
+                                <div className="relative bg-card/50 backdrop-blur-sm border-2 border-neon/50 rounded-xl px-6 sm:px-10 py-4 sm:py-6">
+                                    <div className="text-xs sm:text-sm text-muted mb-2 font-semibold uppercase tracking-wider">Room Code</div>
+                                    <div className="font-mono text-3xl sm:text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon to-accent tracking-wider">
+                                        {roomId?.substring(0, 8).toUpperCase()}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Loading animation */}
+                            <div className="flex justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
+                                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-neon rounded-full animate-bounce shadow-lg shadow-neon/50" style={{ animationDelay: '0s' }}></div>
+                                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-cyan rounded-full animate-bounce shadow-lg shadow-cyan/50" style={{ animationDelay: '0.2s' }}></div>
+                                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-accent rounded-full animate-bounce shadow-lg shadow-accent/50" style={{ animationDelay: '0.4s' }}></div>
+                            </div>
+
+                            {/* Game info cards */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto mb-6 sm:mb-8">
+                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-3 sm:p-4 hover:border-neon/50 transition-all duration-300 hover:shadow-lg hover:shadow-neon/20">
+                                    <div className="text-2xl sm:text-3xl mb-2">
+                                        {gameMode === 'speed' && '⚡'}
+                                        {gameMode === 'ranked' && '🏆'}
+                                        {gameMode === 'classic' && '⚓'}
+                                    </div>
+                                    <div className="text-xs sm:text-sm text-muted font-semibold uppercase tracking-wider mb-1">Mode</div>
+                                    <div className="text-base sm:text-lg font-bold text-accent capitalize">{gameMode}</div>
+                                </div>
+                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-3 sm:p-4 hover:border-neon/50 transition-all duration-300 hover:shadow-lg hover:shadow-neon/20">
+                                    <div className="text-2xl sm:text-3xl mb-2">👥</div>
+                                    <div className="text-xs sm:text-sm text-muted font-semibold uppercase tracking-wider mb-1">Players</div>
+                                    <div className="text-base sm:text-lg font-bold text-accent">1 / 2</div>
+                                </div>
+                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-3 sm:p-4 hover:border-neon/50 transition-all duration-300 hover:shadow-lg hover:shadow-neon/20">
+                                    <div className="text-2xl sm:text-3xl mb-2">🌊</div>
+                                    <div className="text-xs sm:text-sm text-muted font-semibold uppercase tracking-wider mb-1">Grid Size</div>
+                                    <div className="text-base sm:text-lg font-bold text-accent">10 × 10</div>
+                                </div>
+                            </div>
+
+                            {/* Leave button */}
+                            <button
+                                onClick={handleLeaveToLobby}
+                                className="px-6 sm:px-8 py-3 sm:py-4 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl border-2 border-red-500/50 hover:border-red-500 transition-all duration-300 font-bold text-sm sm:text-base shadow-lg hover:shadow-red-500/20 hover:scale-105"
+                            >
+                                Leave Room
+                            </button>
                         </div>
                     </div>
                 )}
 
                 {/* Placement Phase */}
                 {gamePhase === 'placement' && (
-                    <div className="max-w-2xl mx-auto">
-                        <ShipPlacement onPlacementComplete={handleShipPlacementComplete} />
-                        <div className="mt-6 text-center">
-                            <button
-                                onClick={handleLeaveToLobby}
-                                className="px-6 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/50 transition-all"
-                            >
-                                Leave Game
-                            </button>
+                    <div className="relative">
+                        {/* Background effects */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-accent/5 blur-3xl -z-10"></div>
+
+                        <div className="max-w-4xl mx-auto">
+                            <div className="bg-card/30 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-accent/30 shadow-2xl shadow-blue-500/10 overflow-hidden">
+                                {/* Header */}
+                                <div className="bg-gradient-to-r from-blue-500/20 via-accent/20 to-blue-500/20 border-b border-accent/30 p-4 sm:p-6">
+                                    <div className="text-center">
+                                        <div className="text-4xl sm:text-5xl mb-3">📍</div>
+                                        <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan to-accent mb-2">
+                                            Deploy Your Fleet
+                                        </h2>
+                                        <p className="text-sm sm:text-base text-muted">
+                                            Position your ships strategically on the battlefield
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Ship placement component */}
+                                <div className="p-4 sm:p-6">
+                                    <ShipPlacement onPlacementComplete={handleShipPlacementComplete} />
+                                </div>
+
+                                {/* Footer with instructions */}
+                                <div className="bg-gradient-to-r from-accent/10 via-blue-500/10 to-accent/10 border-t border-accent/30 p-4 sm:p-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                                        <div className="bg-card/40 rounded-lg p-3 border border-accent/20">
+                                            <div className="text-sm font-semibold text-accent mb-1">💡 Quick Tip</div>
+                                            <div className="text-xs text-muted">Click and drag ships to position them on the grid</div>
+                                        </div>
+                                        <div className="bg-card/40 rounded-lg p-3 border border-accent/20">
+                                            <div className="text-sm font-semibold text-accent mb-1">🔄 Rotate Ships</div>
+                                            <div className="text-xs text-muted">Click on a ship to rotate its orientation</div>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={handleLeaveToLobby}
+                                        className="w-full sm:w-auto px-6 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl border-2 border-red-500/50 hover:border-red-500 transition-all duration-300 font-bold text-sm sm:text-base shadow-lg hover:shadow-red-500/20 hover:scale-105"
+                                    >
+                                        Leave Game
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {/* Ready Phase - Waiting for opponent */}
                 {gamePhase === 'ready' && (
-                    <div className="bg-slate-800/50 rounded-lg p-12 border border-purple-500/30 text-center">
-                        <div className="text-6xl mb-4">✓</div>
-                        <h2 className="text-3xl font-bold text-purple-400 mb-3">You're Ready!</h2>
-                        <p className="text-gray-300 mb-6">
-                            Waiting for your opponent to finish placing their ships...
-                        </p>
-                        <div className="flex justify-center gap-3">
-                            <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
-                            <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
-                            <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}></div>
+                    <div className="relative overflow-hidden">
+                        {/* Background gradient effects */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-accent/5 blur-3xl"></div>
+                        <div className="absolute top-0 left-1/4 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
+                        <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+
+                        <div className="relative bg-card/30 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-6 sm:p-12 md:p-16 border border-purple-500/30 shadow-2xl shadow-purple-500/10 text-center">
+                            {/* Animated checkmark */}
+                            <div className="relative inline-block mb-6 sm:mb-8">
+                                <div className="text-6xl sm:text-8xl md:text-9xl animate-pulse">✓</div>
+                                <div className="absolute -inset-4 bg-gradient-to-r from-purple-500 to-accent rounded-full blur-2xl opacity-20 animate-pulse"></div>
+                            </div>
+
+                            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-purple-300 to-accent mb-4 sm:mb-6">
+                                You're Ready!
+                            </h2>
+
+                            <p className="text-base sm:text-lg md:text-xl text-muted mb-6 sm:mb-8 max-w-2xl mx-auto">
+                                Your fleet is deployed and battle-ready. Waiting for your opponent to finish their preparations...
+                            </p>
+
+                            {/* Status indicators */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 max-w-2xl mx-auto mb-6 sm:mb-8">
+                                <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 sm:p-6">
+                                    <div className="text-3xl sm:text-4xl mb-2">✓</div>
+                                    <div className="text-sm sm:text-base font-bold text-green-400">You</div>
+                                    <div className="text-xs text-muted mt-1">Ready</div>
+                                </div>
+                                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 sm:p-6">
+                                    <div className="flex justify-center gap-1 mb-2">
+                                        <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
+                                        <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
+                                        <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" style={{ animationDelay: '0.6s' }}></div>
+                                    </div>
+                                    <div className="text-sm sm:text-base font-bold text-yellow-400">Opponent</div>
+                                    <div className="text-xs text-muted mt-1">Deploying...</div>
+                                </div>
+                            </div>
+
+                            {/* Your ships summary */}
+                            <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-4 sm:p-6 max-w-md mx-auto mb-6 sm:mb-8">
+                                <h3 className="text-base sm:text-lg font-bold text-accent mb-3 flex items-center justify-center gap-2">
+                                    <span>⚓</span> Your Fleet
+                                </h3>
+                                <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
+                                    {myShips.map(ship => (
+                                        <div key={ship.id} className="bg-accent/5 border border-accent/20 rounded-lg p-2 flex items-center justify-between">
+                                            <span className="text-accent font-semibold truncate">{ship.name}</span>
+                                            <span className="text-green-400 ml-2">✓</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Loading animation */}
+                            <div className="flex justify-center gap-2 sm:gap-3">
+                                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-purple-400 rounded-full animate-pulse shadow-lg shadow-purple-400/50"></div>
+                                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-purple-400 rounded-full animate-pulse shadow-lg shadow-purple-400/50" style={{ animationDelay: '0.3s' }}></div>
+                                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-purple-400 rounded-full animate-pulse shadow-lg shadow-purple-400/50" style={{ animationDelay: '0.6s' }}></div>
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {/* Finished Phase - Victory/Defeat Screen */}
                 {gamePhase === 'finished' && (
-                    <div className={`rounded-lg p-12 border text-center ${
-                        winner === user?.id 
-                            ? 'bg-green-900/30 border-green-500/50' 
-                            : 'bg-red-900/30 border-red-500/50'
-                    }`}>
-                        <div className="text-8xl mb-6">
-                            {winner === user?.id ? '🏆' : '💀'}
-                        </div>
-                        <h2 className={`text-5xl font-bold mb-4 ${
-                            winner === user?.id ? 'text-green-400' : 'text-red-400'
+                    <div className="relative overflow-hidden">
+                        {/* Background gradient effects */}
+                        <div className={`absolute inset-0 blur-3xl ${
+                            winner === user?.id 
+                                ? 'bg-gradient-to-br from-green-500/10 via-transparent to-green-500/10' 
+                                : 'bg-gradient-to-br from-red-500/10 via-transparent to-red-500/10'
+                        }`}></div>
+                        <div className={`absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl animate-pulse ${
+                            winner === user?.id ? 'bg-green-500/20' : 'bg-red-500/20'
+                        }`}></div>
+
+                        <div className={`relative rounded-2xl sm:rounded-3xl p-6 sm:p-12 md:p-16 border-2 text-center shadow-2xl backdrop-blur-xl ${
+                            winner === user?.id 
+                                ? 'bg-green-900/20 border-green-500/50 shadow-green-500/20' 
+                                : 'bg-red-900/20 border-red-500/50 shadow-red-500/20'
                         }`}>
-                            {winner === user?.id ? 'VICTORY!' : 'DEFEAT'}
-                        </h2>
-                        <p className="text-gray-300 text-xl mb-8">
-                            {winReason === 'forfeit' && gameOverMessage ? (
-                                // Display forfeit message
-                                winner === user?.id ? (
-                                    <>🎉 {gameOverMessage}</>
-                                ) : (
-                                    <>😔 You left the game</>
-                                )
-                            ) : (
-                                // Display normal win/loss message
-                                winner === user?.id
-                                    ? '🎯 You destroyed all enemy ships!'
-                                    : '💥 All your ships were destroyed!'
-                            )}
-                        </p>
-                        {gameMode === 'ranked' && rpChange !== null && (
-                            <div className={`mb-6 px-6 py-3 rounded-lg border-2 ${
-                                rpChange > 0 
-                                    ? 'bg-green-500/20 border-green-500 text-green-300' 
-                                    : 'bg-red-500/20 border-red-500 text-red-300'
+                            {/* Animated trophy/skull */}
+                            <div className="relative inline-block mb-6 sm:mb-8">
+                                <div className={`text-7xl sm:text-8xl md:text-9xl ${
+                                    winner === user?.id ? 'animate-bounce' : ''
+                                }`}>
+                                    {winner === user?.id ? '🏆' : '💀'}
+                                </div>
+                                <div className={`absolute -inset-6 rounded-full blur-3xl opacity-30 animate-pulse ${
+                                    winner === user?.id ? 'bg-gradient-to-r from-green-400 to-yellow-400' : 'bg-gradient-to-r from-red-500 to-orange-500'
+                                }`}></div>
+                            </div>
+
+                            <h2 className={`text-4xl sm:text-5xl md:text-6xl font-black mb-4 sm:mb-6 ${
+                                winner === user?.id ? 'text-green-400' : 'text-red-400'
                             }`}>
-                                <div className="text-sm font-semibold mb-1">Ranking Points</div>
-                                <div className="text-3xl font-bold">
-                                    {rpChange > 0 ? '+' : ''}{rpChange} RP
+                                {winner === user?.id ? 'VICTORY!' : 'DEFEAT'}
+                            </h2>
+
+                            <p className="text-base sm:text-lg md:text-xl text-muted mb-6 sm:mb-8 max-w-2xl mx-auto">
+                                {winReason === 'forfeit' && gameOverMessage ? (
+                                    // Display forfeit message
+                                    winner === user?.id ? (
+                                        <span className="text-green-300">🎉 {gameOverMessage}</span>
+                                    ) : (
+                                        <span className="text-red-300">😔 You left the game</span>
+                                    )
+                                ) : (
+                                    // Display normal win/loss message
+                                    winner === user?.id
+                                        ? <span className="text-green-300">🎯 You destroyed all enemy ships!</span>
+                                        : <span className="text-red-300">💥 All your ships were destroyed!</span>
+                                )}
+                            </p>
+
+                            {/* RP Change for Ranked Mode */}
+                            {gameMode === 'ranked' && rpChange !== null && (
+                                <div className={`inline-block mb-6 sm:mb-8 px-6 sm:px-10 py-4 sm:py-6 rounded-xl border-2 shadow-xl transition-all hover:scale-105 ${
+                                    rpChange > 0 
+                                        ? 'bg-green-500/20 border-green-500 shadow-green-500/30' 
+                                        : 'bg-red-500/20 border-red-500 shadow-red-500/30'
+                                }`}>
+                                    <div className="text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 opacity-80">
+                                        Ranking Points
+                                    </div>
+                                    <div className={`text-4xl sm:text-5xl md:text-6xl font-black ${
+                                        rpChange > 0 ? 'text-green-300' : 'text-red-300'
+                                    }`}>
+                                        {rpChange > 0 ? '+' : ''}{rpChange} RP
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Battle Stats */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto mb-6 sm:mb-8">
+                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-4 hover:border-accent/50 transition-all">
+                                    <div className="text-2xl sm:text-3xl mb-2">💣</div>
+                                    <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Hits</div>
+                                    <div className="text-2xl sm:text-3xl font-black text-red-400">
+                                        {myAttacks.filter(a => a.isHit).length}
+                                    </div>
+                                </div>
+                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-4 hover:border-accent/50 transition-all">
+                                    <div className="text-2xl sm:text-3xl mb-2">🌊</div>
+                                    <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Misses</div>
+                                    <div className="text-2xl sm:text-3xl font-black text-blue-400">
+                                        {myAttacks.filter(a => !a.isHit).length}
+                                    </div>
+                                </div>
+                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-4 hover:border-accent/50 transition-all">
+                                    <div className="text-2xl sm:text-3xl mb-2">📊</div>
+                                    <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Accuracy</div>
+                                    <div className="text-2xl sm:text-3xl font-black text-accent">
+                                        {myAttacks.length > 0
+                                            ? Math.round((myAttacks.filter(a => a.isHit).length / myAttacks.length) * 100)
+                                            : 0}%
+                                    </div>
                                 </div>
                             </div>
-                        )}
-                        <div className="flex justify-center gap-4">
-                            <button
-                                onClick={handleLeaveToLobby}
-                                className="px-8 py-4 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-lg border border-cyan-500/50 transition-all text-lg font-semibold"
-                            >
-                                Return to Lobby
-                            </button>
-                            <button
-                                onClick={() => window.location.reload()}
-                                className="px-8 py-4 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-lg border border-purple-500/50 transition-all text-lg font-semibold"
-                            >
-                                Play Again
-                            </button>
+
+                            {/* Action buttons */}
+                            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+                                <button
+                                    onClick={handleLeaveToLobby}
+                                    className="px-6 sm:px-8 py-3 sm:py-4 bg-cyan/20 hover:bg-cyan/30 text-cyan rounded-xl border-2 border-cyan/50 hover:border-cyan transition-all duration-300 text-base sm:text-lg font-bold shadow-lg hover:shadow-cyan/20 hover:scale-105"
+                                >
+                                    Return to Lobby
+                                </button>
+                                <button
+                                    onClick={() => window.location.reload()}
+                                    className="px-6 sm:px-8 py-3 sm:py-4 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-xl border-2 border-purple-500/50 hover:border-purple-500 transition-all duration-300 text-base sm:text-lg font-bold shadow-lg hover:shadow-purple-500/20 hover:scale-105"
+                                >
+                                    Play Again
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {/* Playing Phase - Game Boards */}
                 {gamePhase === 'playing' && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Your Board */}
-                        <div className="space-y-3">
-                            <h2 className="text-2xl font-bold text-cyan-400 flex items-center gap-2">
-                                <span>🛡️</span> Your Fleet
-                            </h2>
-                            <GameBoard3D
-                                isPlayerBoard={true}
-                                boardSize={10}
-                                initialShips={myShips.map(ship => ({
-                                    ...ship,
-                                    hits: 0
-                                }))}
-                                attacks={opponentAttacks}
-                            />
-                            <div className="bg-slate-800/50 rounded-lg p-4 border border-cyan-500/30">
-                                <h3 className="text-lg font-semibold text-cyan-300 mb-2">Your Ships</h3>
-                                <div className="space-y-2 text-sm">
-                                    {myShips.map(ship => (
-                                        <div key={ship.id} className="flex justify-between items-center">
-                                            <span className="text-gray-300">🚢 {ship.name} ({ship.size})</span>
-                                            <span className="text-green-400">
-                                                {Array.from({ length: ship.size }).map((_, i) => (
-                                                    <span key={i}>● </span>
-                                                ))}
-                                            </span>
+                    <div className="space-y-4 sm:space-y-6">
+                        {/* Turn indicator banner for mobile */}
+                        <div className={`sm:hidden bg-gradient-to-r rounded-xl p-4 border-2 shadow-lg transition-all duration-300 ${
+                            isMyTurn 
+                                ? 'from-green-500/20 to-green-600/20 border-green-500/50 shadow-green-500/20' 
+                                : 'from-red-500/20 to-red-600/20 border-red-500/50 shadow-red-500/20'
+                        }`}>
+                            <div className="text-center">
+                                <div className="text-3xl mb-2">{isMyTurn ? '💣' : '⏳'}</div>
+                                <div className="text-lg font-black text-accent">
+                                    {isMyTurn ? 'YOUR TURN!' : 'OPPONENT\'S TURN'}
+                                </div>
+                                {isMyTurn && (
+                                    <div className="text-sm text-muted mt-1">Tap enemy waters to attack</div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                            {/* Your Board */}
+                            <div className="space-y-3 order-2 lg:order-1">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan to-accent flex items-center gap-2">
+                                        <span>🛡️</span>
+                                        <span className="hidden sm:inline">Your Fleet</span>
+                                        <span className="sm:hidden">Fleet</span>
+                                    </h2>
+                                    <div className="text-xs sm:text-sm text-muted">
+                                        <span className="text-red-400 font-bold">{opponentAttacks.filter(a => a.isHit).length}</span>
+                                        <span className="mx-1">/</span>
+                                        <span className="text-muted">{opponentAttacks.length} attacks</span>
+                                    </div>
+                                </div>
+
+                                {/* 3D Board Container - Responsive height */}
+                                <div className="relative bg-card/30 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-cyan/30 overflow-hidden shadow-xl shadow-cyan/10 hover:border-cyan/50 transition-all duration-300">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-cyan/5 to-transparent"></div>
+                                    <div className="relative" style={{ height: 'clamp(300px, 50vh, 500px)' }}>
+                                        <GameBoard3D
+                                            isPlayerBoard={true}
+                                            boardSize={10}
+                                            initialShips={myShips.map(ship => ({
+                                                ...ship,
+                                                hits: 0
+                                            }))}
+                                            attacks={opponentAttacks}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Ship status - Collapsible on mobile */}
+                                <div className="bg-card/40 backdrop-blur-sm rounded-xl border border-cyan/30 overflow-hidden shadow-lg">
+                                    <details className="group" open={typeof window !== 'undefined' && window.innerWidth >= 640}>
+                                        <summary className="cursor-pointer p-3 sm:p-4 hover:bg-cyan/5 transition-colors">
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-base sm:text-lg font-bold text-cyan inline-flex items-center gap-2">
+                                                    <span>⚓</span> Your Ships
+                                                </h3>
+                                                <span className="text-xs text-muted group-open:rotate-180 transition-transform">▼</span>
+                                            </div>
+                                        </summary>
+                                        <div className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-2 text-xs sm:text-sm">
+                                            {myShips.map(ship => {
+                                                const hits = opponentAttacks.filter(attack =>
+                                                    attack.isHit && ship.positions.some(pos => pos.row === attack.row && pos.col === attack.col)
+                                                ).length;
+                                                const isSunk = hits >= ship.size;
+
+                                                return (
+                                                    <div key={ship.id} className={`flex justify-between items-center p-2 rounded-lg border transition-all ${
+                                                        isSunk ? 'bg-red-500/10 border-red-500/30' : 'bg-cyan/5 border-cyan/20'
+                                                    }`}>
+                                                        <span className={`font-semibold ${isSunk ? 'text-red-400 line-through' : 'text-accent'}`}>
+                                                            🚢 {ship.name} <span className="text-muted text-xs">({ship.size})</span>
+                                                        </span>
+                                                        <div className="flex gap-1">
+                                                            {Array.from({ length: ship.size }).map((_, i) => (
+                                                                <span key={i} className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full border transition-all ${
+                                                                    i < hits 
+                                                                        ? 'bg-red-500 border-red-400 shadow-lg shadow-red-500/50' 
+                                                                        : 'bg-green-500 border-green-400 shadow-sm shadow-green-500/30'
+                                                                }`}></span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-                                    ))}
+                                    </details>
+                                </div>
+                            </div>
+
+                            {/* Opponent's Board */}
+                            <div className="space-y-3 order-1 lg:order-2">
+                                <div className="flex items-center justify-between">
+                                    <h2 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-400 flex items-center gap-2">
+                                        <span>💣</span>
+                                        <span className="hidden sm:inline">Enemy Waters</span>
+                                        <span className="sm:hidden">Enemy</span>
+                                    </h2>
+                                    <div className={`px-3 py-1 rounded-full text-xs sm:text-sm font-bold border ${
+                                        isMyTurn 
+                                            ? 'bg-green-500/20 text-green-400 border-green-500/50 animate-pulse' 
+                                            : 'bg-red-500/20 text-red-400 border-red-500/50'
+                                    }`}>
+                                        {isMyTurn ? '💣 FIRE!' : '⏳ WAIT'}
+                                    </div>
+                                </div>
+
+                                {/* 3D Board Container - Responsive height */}
+                                <div className="relative bg-card/30 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-red-400/30 overflow-hidden shadow-xl shadow-red-400/10 hover:border-red-400/50 transition-all duration-300">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent"></div>
+                                    <div className="relative" style={{ height: 'clamp(300px, 50vh, 500px)' }}>
+                                        <GameBoard3D
+                                            isPlayerBoard={false}
+                                            boardSize={10}
+                                            onCellClick={handleCellClick}
+                                            isClickable={isMyTurn}
+                                            initialShips={[]}
+                                            attacks={myAttacks}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Attack stats */}
+                                <div className="bg-card/40 backdrop-blur-sm rounded-xl border border-red-400/30 p-3 sm:p-4 shadow-lg">
+                                    <h3 className="text-base sm:text-lg font-bold text-red-400 mb-3 flex items-center gap-2">
+                                        <span>📊</span> Attack Stats
+                                    </h3>
+                                    <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-2 sm:p-3 text-center">
+                                            <div className="text-xs sm:text-sm text-muted mb-1">Hits</div>
+                                            <div className="text-xl sm:text-3xl font-black text-red-400">
+                                                {myAttacks.filter(a => a.isHit).length}
+                                            </div>
+                                        </div>
+                                        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2 sm:p-3 text-center">
+                                            <div className="text-xs sm:text-sm text-muted mb-1">Misses</div>
+                                            <div className="text-xl sm:text-3xl font-black text-blue-400">
+                                                {myAttacks.filter(a => !a.isHit).length}
+                                            </div>
+                                        </div>
+                                        <div className="bg-accent/10 border border-accent/30 rounded-lg p-2 sm:p-3 text-center">
+                                            <div className="text-xs sm:text-sm text-muted mb-1">Accuracy</div>
+                                            <div className="text-xl sm:text-3xl font-black text-accent">
+                                                {myAttacks.length > 0
+                                                    ? Math.round((myAttacks.filter(a => a.isHit).length / myAttacks.length) * 100)
+                                                    : 0}%
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Opponent's Board */}
-                        <div className="space-y-3">
-                            <h2 className="text-2xl font-bold text-red-400 flex items-center gap-2">
-                                <span>🎯</span> Enemy Waters
-                            </h2>
-                            <GameBoard3D
-                                isPlayerBoard={false}
-                                boardSize={10}
-                                onCellClick={handleCellClick}
-                                isClickable={isMyTurn}
-                                initialShips={[]}
-                                attacks={myAttacks}
-                            />
-                            <div className="bg-slate-800/50 rounded-lg p-4 border border-red-500/30">
-                                <h3 className="text-lg font-semibold text-red-300 mb-2">Attack Stats</h3>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                    <div>
-                                        <div className="text-gray-400">Hits</div>
-                                        <div className="text-2xl font-bold text-red-400">
-                                            {myAttacks.filter(a => a.isHit).length}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="text-gray-400">Misses</div>
-                                        <div className="text-2xl font-bold text-blue-400">
-                                            {myAttacks.filter(a => !a.isHit).length}
-                                        </div>
-                                    </div>
+                        {/* Game controls - Mobile optimized */}
+                        <div className="bg-card/30 backdrop-blur-sm rounded-xl border border-accent/30 p-3 sm:p-4 shadow-lg">
+                            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
+                                <div className="text-center sm:text-left text-xs sm:text-sm text-muted w-full sm:w-auto">
+                                    <span className="hidden sm:inline">💡 <span className="font-semibold">Tip:</span> Click enemy waters to attack. Drag to rotate camera.</span>
+                                    <span className="sm:hidden">💡 Tap to attack • Drag to rotate</span>
                                 </div>
+                                <button
+                                    onClick={handleLeaveToLobby}
+                                    className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border-2 border-red-500/50 hover:border-red-500 transition-all duration-300 font-bold text-sm sm:text-base hover:scale-105 shadow-lg hover:shadow-red-500/20"
+                                >
+                                    Leave Game
+                                </button>
                             </div>
                         </div>
                     </div>

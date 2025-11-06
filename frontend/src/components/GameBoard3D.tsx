@@ -387,7 +387,7 @@ export default function GameBoard3D({
     attacks?: Array<{row: number, col: number, isHit: boolean}>;
 }) {
     return (
-        <div className="w-full h-[600px] rounded-lg overflow-hidden border-2 border-cyan-500/30 shadow-2xl">
+        <div className="w-full h-full rounded-lg overflow-hidden">
             <Canvas shadows>
                 <PerspectiveCamera makeDefault position={[0, 15, 15]} />
 
@@ -423,7 +423,7 @@ export default function GameBoard3D({
                     attacks={attacks}
                 />
 
-                {/* Camera controls */}
+                {/* Camera controls - Enhanced for mobile */}
                 <OrbitControls
                     enablePan={true}
                     enableZoom={true}
@@ -431,6 +431,13 @@ export default function GameBoard3D({
                     minDistance={10}
                     maxDistance={30}
                     maxPolarAngle={Math.PI / 2.2}
+                    rotateSpeed={0.8}
+                    zoomSpeed={0.8}
+                    panSpeed={0.8}
+                    touches={{
+                        ONE: THREE.TOUCH.ROTATE,
+                        TWO: THREE.TOUCH.DOLLY_PAN
+                    }}
                 />
             </Canvas>
         </div>

@@ -207,83 +207,89 @@ export default function Profile() {
                             </div>
                         )}
 
-                        {/* Tabs */}
-                        <div className="bg-card border border-accent rounded-xl overflow-hidden">
-                            <div className="flex border-b border-accent">
-                                <button
-                                    onClick={() => setActiveTab('overview')}
-                                    className={`flex-1 px-6 py-4 font-semibold transition ${
-                                        activeTab === 'overview'
-                                            ? 'bg-accent/10 text-neon border-b-2 border-neon'
-                                            : 'text-muted hover:text-accent'
-                                    }`}
-                                >
-                                    Overview
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('matches')}
-                                    className={`flex-1 px-6 py-4 font-semibold transition ${
-                                        activeTab === 'matches'
-                                            ? 'bg-accent/10 text-neon border-b-2 border-neon'
-                                            : 'text-muted hover:text-accent'
-                                    }`}
-                                >
-                                    Match History
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('achievements')}
-                                    className={`flex-1 px-6 py-4 font-semibold transition ${
-                                        activeTab === 'achievements'
-                                            ? 'bg-accent/10 text-neon border-b-2 border-neon'
-                                            : 'text-muted hover:text-accent'
-                                    }`}
-                                >
-                                    Achievements
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('stats')}
-                                    className={`flex-1 px-6 py-4 font-semibold transition ${
-                                        activeTab === 'stats'
-                                            ? 'bg-accent/10 text-neon border-b-2 border-neon'
-                                            : 'text-muted hover:text-accent'
-                                    }`}
-                                >
-                                    Detailed Stats
-                                </button>
+                        {/* Tabs - Ultra Compact */}
+                        <div className="bg-card/30 border border-accent/30 rounded-lg overflow-hidden shadow-lg">
+                            <div className="overflow-x-auto scrollbar-hide">
+                                <div className="flex border-b border-accent/30">
+                                    <button
+                                        onClick={() => setActiveTab('overview')}
+                                        className={`flex-1 min-w-[70px] px-2 py-2 sm:px-4 sm:py-3 font-bold text-xs sm:text-sm transition ${
+                                            activeTab === 'overview'
+                                                ? 'bg-neon/20 text-neon border-b-2 border-neon'
+                                                : 'text-muted hover:text-accent'
+                                        }`}
+                                    >
+                                        📊
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('matches')}
+                                        className={`flex-1 min-w-[70px] px-2 py-2 sm:px-4 sm:py-3 font-bold text-xs sm:text-sm transition ${
+                                            activeTab === 'matches'
+                                                ? 'bg-neon/20 text-neon border-b-2 border-neon'
+                                                : 'text-muted hover:text-accent'
+                                        }`}
+                                    >
+                                        ⚔️
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('achievements')}
+                                        className={`flex-1 min-w-[70px] px-2 py-2 sm:px-4 sm:py-3 font-bold text-xs sm:text-sm transition ${
+                                            activeTab === 'achievements'
+                                                ? 'bg-neon/20 text-neon border-b-2 border-neon'
+                                                : 'text-muted hover:text-accent'
+                                        }`}
+                                    >
+                                        🏅
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('stats')}
+                                        className={`flex-1 min-w-[70px] px-2 py-2 sm:px-4 sm:py-3 font-bold text-xs sm:text-sm transition ${
+                                            activeTab === 'stats'
+                                                ? 'bg-neon/20 text-neon border-b-2 border-neon'
+                                                : 'text-muted hover:text-accent'
+                                        }`}
+                                    >
+                                        📈
+                                    </button>
+                                </div>
                             </div>
 
-                            <div className="p-6">
+                            <div className="p-2 sm:p-4 md:p-6">
                                 {activeTab === 'overview' && stats && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <h3 className="text-xl font-bold text-accent mb-4">Game Statistics</h3>
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between p-3 bg-navy/50 rounded-lg">
-                                                    <span className="text-muted">Wins</span>
-                                                    <span className="text-green-400 font-semibold">{stats.wins || 0}</span>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
+                                        <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 hover:border-neon/50 transition shadow-lg">
+                                            <h3 className="text-base sm:text-lg md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon to-accent mb-3 sm:mb-4 flex items-center gap-2">
+                                                <span>📊</span> Statistics
+                                            </h3>
+                                            <div className="space-y-2">
+                                                <div className="flex justify-between items-center p-2 sm:p-3 bg-gradient-to-r from-green-500/10 to-transparent border-l-2 sm:border-l-4 border-green-500 rounded-lg">
+                                                    <span className="text-xs sm:text-sm text-muted font-semibold">🏆 Wins</span>
+                                                    <span className="text-sm sm:text-base md:text-lg text-green-400 font-black">{stats.wins || 0}</span>
                                                 </div>
-                                                <div className="flex justify-between p-3 bg-navy/50 rounded-lg">
-                                                    <span className="text-muted">Losses</span>
-                                                    <span className="text-red-400 font-semibold">{stats.losses || 0}</span>
+                                                <div className="flex justify-between items-center p-2 sm:p-3 bg-gradient-to-r from-red-500/10 to-transparent border-l-2 sm:border-l-4 border-red-500 rounded-lg">
+                                                    <span className="text-xs sm:text-sm text-muted font-semibold">💀 Losses</span>
+                                                    <span className="text-sm sm:text-base md:text-lg text-red-400 font-black">{stats.losses || 0}</span>
                                                 </div>
-                                                <div className="flex justify-between p-3 bg-navy/50 rounded-lg">
-                                                    <span className="text-muted">Win Rate</span>
-                                                    <span className="text-accent font-semibold">{(stats.winRate ?? 0).toFixed(1)}%</span>
+                                                <div className="flex justify-between items-center p-2 sm:p-3 bg-gradient-to-r from-accent/10 to-transparent border-l-2 sm:border-l-4 border-accent rounded-lg">
+                                                    <span className="text-xs sm:text-sm text-muted font-semibold">📈 Win Rate</span>
+                                                    <span className="text-sm sm:text-base md:text-lg text-accent font-black">{(stats.winRate ?? 0).toFixed(1)}%</span>
                                                 </div>
-                                                <div className="flex justify-between p-3 bg-navy/50 rounded-lg">
-                                                    <span className="text-muted">Current Streak</span>
-                                                    <span className="text-neon font-semibold">🔥 {stats.currentStreak || 0}</span>
+                                                <div className="flex justify-between items-center p-2 sm:p-3 bg-gradient-to-r from-orange-500/10 to-transparent border-l-2 sm:border-l-4 border-orange-500 rounded-lg">
+                                                    <span className="text-xs sm:text-sm text-muted font-semibold">🔥 Streak</span>
+                                                    <span className="text-sm sm:text-base md:text-lg text-orange-400 font-black">{stats.currentStreak || 0}</span>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div>
-                                            <h3 className="text-xl font-bold text-accent mb-4">Rank Progress</h3>
+                                        <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-6 hover:border-neon/50 transition shadow-lg">
+                                            <h3 className="text-base sm:text-lg md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-accent mb-3 sm:mb-4 flex items-center gap-2">
+                                                <span>👑</span> Rank
+                                            </h3>
                                             {stats?.rankInfo ? (
                                                 <RankDisplay rankInfo={stats.rankInfo} showProgressBar={true} size="medium" />
                                             ) : (
                                                 <div className="bg-navy/50 rounded-lg p-6 text-center">
-                                                    <div className="text-muted">Loading rank information...</div>
+                                                    <div className="text-muted">Loading...</div>
                                                 </div>
                                             )}
                                         </div>
@@ -292,167 +298,166 @@ export default function Profile() {
 
                                 {activeTab === 'matches' && (
                                     <div className="space-y-4">
-                                        {/* Filter Buttons */}
+                                        {/* Filter Buttons - Responsive */}
                                         <div className="flex gap-2 flex-wrap">
-                                            <button
-                                                onClick={() => setMatchFilter('all')}
-                                                className={`px-4 py-2 rounded-lg font-semibold transition ${
-                                                    matchFilter === 'all'
-                                                        ? 'bg-neon text-navy border-2 border-neon'
-                                                        : 'bg-navy/50 text-muted border border-accent/30 hover:border-neon/50'
-                                                }`}
-                                            >
-                                                All Modes
-                                            </button>
-                                            <button
-                                                onClick={() => setMatchFilter('ranked')}
-                                                className={`px-4 py-2 rounded-lg font-semibold transition ${
-                                                    matchFilter === 'ranked'
-                                                        ? 'bg-neon text-navy border-2 border-neon'
-                                                        : 'bg-navy/50 text-muted border border-accent/30 hover:border-neon/50'
-                                                }`}
-                                            >
-                                                Ranked
-                                            </button>
-                                            <button
-                                                onClick={() => setMatchFilter('classic')}
-                                                className={`px-4 py-2 rounded-lg font-semibold transition ${
-                                                    matchFilter === 'classic'
-                                                        ? 'bg-neon text-navy border-2 border-neon'
-                                                        : 'bg-navy/50 text-muted border border-accent/30 hover:border-neon/50'
-                                                }`}
-                                            >
-                                                Classic
-                                            </button>
-                                            <button
-                                                onClick={() => setMatchFilter('speed')}
-                                                className={`px-4 py-2 rounded-lg font-semibold transition ${
-                                                    matchFilter === 'speed'
-                                                        ? 'bg-neon text-navy border-2 border-neon'
-                                                        : 'bg-navy/50 text-muted border border-accent/30 hover:border-neon/50'
-                                                }`}
-                                            >
-                                                Speed
-                                            </button>
+                                            {[
+                                                { value: 'all', label: 'All', icon: '🎮' },
+                                                { value: 'ranked', label: 'Ranked', icon: '🏆' },
+                                                { value: 'classic', label: 'Classic', icon: '⚓' },
+                                                { value: 'speed', label: 'Speed', icon: '⚡' }
+                                            ].map(filter => (
+                                                <button
+                                                    key={filter.value}
+                                                    onClick={() => setMatchFilter(filter.value as any)}
+                                                    className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-xl font-bold text-xs sm:text-sm transition-all duration-300 ${
+                                                        matchFilter === filter.value
+                                                            ? 'bg-gradient-to-r from-neon to-accent text-navy border-2 border-neon shadow-lg shadow-neon/30 scale-105'
+                                                            : 'bg-card/40 text-muted border border-accent/30 hover:border-neon/50 hover:text-accent'
+                                                    }`}
+                                                >
+                                                    <span className="hidden sm:inline">{filter.icon} </span>{filter.label}
+                                                </button>
+                                            ))}
                                         </div>
 
                                         {/* Matches List */}
                                         {!Array.isArray(matches) || matches.length === 0 ? (
-                                            <div className="text-center text-muted py-8">
-                                                No matches played yet. Start playing to see your match history!
+                                            <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-2xl p-8 sm:p-12 text-center">
+                                                <div className="text-5xl sm:text-6xl mb-4">⚔️</div>
+                                                <div className="text-lg sm:text-xl text-muted font-semibold mb-2">No Battles Yet</div>
+                                                <div className="text-sm text-muted">Start playing to see your epic battle history!</div>
                                             </div>
                                         ) : (
-                                            matches
-                                                .filter(match => matchFilter === 'all' || match.mode.toLowerCase() === matchFilter)
-                                                .slice(0, 10)
-                                                .map((match) => (
-                                                <div
-                                                    key={match.id}
-                                                    className="flex items-center justify-between p-4 bg-navy/50 border border-accent/30 rounded-lg hover:border-neon/50 transition"
-                                                >
-                                                    <div className="flex items-center gap-4">
-                                                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl ${
-                                                            match.result === 'won'
-                                                                ? 'bg-green-500/20 border border-green-500/50'
-                                                                : 'bg-red-500/20 border border-red-500/50'
-                                                        }`}>
-                                                            {match.result === 'won' ? '✓' : '✗'}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-semibold text-accent">vs {match.opponent}</div>
-                                                            <div className="text-sm text-muted">{match.mode} • {formatDate(match.playedAt)}</div>
-                                                        </div>
-                                                    </div>
-                                                    <div className="text-right">
-                                                        <div className={`font-bold text-lg ${
-                                                            match.result === 'won' ? 'text-green-400' : 'text-red-400'
-                                                        }`}>
-                                                            {match.score}
-                                                        </div>
-                                                        {match.pointsChange !== null && match.mode.toLowerCase() === 'ranked' && (
-                                                            <div className={`text-sm font-semibold ${
-                                                                match.pointsChange >= 0 ? 'text-green-400' : 'text-red-400'
+                                            <div className="space-y-2 sm:space-y-3">
+                                                {matches
+                                                    .filter(match => matchFilter === 'all' || match.mode.toLowerCase() === matchFilter)
+                                                    .slice(0, 10)
+                                                    .map((match) => (
+                                                    <div
+                                                        key={match.id}
+                                                        className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:border-neon/50 transition-all duration-300 hover:scale-[1.02] shadow-lg"
+                                                    >
+                                                        <div className="flex items-center justify-between gap-3 sm:gap-4">
+                                                            {/* Result Icon */}
+                                                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-xl sm:text-2xl font-black border-2 ${
+                                                                match.result === 'won'
+                                                                    ? 'bg-green-500/20 border-green-500 text-green-400 shadow-lg shadow-green-500/30'
+                                                                    : 'bg-red-500/20 border-red-500 text-red-400 shadow-lg shadow-red-500/30'
                                                             }`}>
-                                                                {match.pointsChange >= 0 ? '+' : ''}{match.pointsChange} RP
+                                                                {match.result === 'won' ? '✓' : '✗'}
                                                             </div>
-                                                        )}
+
+                                                            {/* Match Info */}
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className="font-bold text-sm sm:text-base text-accent truncate">
+                                                                    vs {match.opponent}
+                                                                </div>
+                                                                <div className="text-xs sm:text-sm text-muted flex items-center gap-2 flex-wrap">
+                                                                    <span className={`px-2 py-0.5 rounded-full ${
+                                                                        match.mode.toLowerCase() === 'ranked' ? 'bg-purple-500/20 text-purple-400' :
+                                                                        match.mode.toLowerCase() === 'speed' ? 'bg-orange-500/20 text-orange-400' :
+                                                                        'bg-blue-500/20 text-blue-400'
+                                                                    }`}>
+                                                                        {match.mode}
+                                                                    </span>
+                                                                    <span className="hidden sm:inline">•</span>
+                                                                    <span className="hidden sm:inline">{formatDate(match.playedAt)}</span>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Score & RP */}
+                                                            <div className="text-right">
+                                                                <div className={`font-black text-base sm:text-lg ${
+                                                                    match.result === 'won' ? 'text-green-400' : 'text-red-400'
+                                                                }`}>
+                                                                    {match.score}
+                                                                </div>
+                                                                {match.pointsChange !== null && match.mode.toLowerCase() === 'ranked' && (
+                                                                    <div className={`text-xs sm:text-sm font-bold ${
+                                                                        match.pointsChange >= 0 ? 'text-green-400' : 'text-red-400'
+                                                                    }`}>
+                                                                        {match.pointsChange >= 0 ? '+' : ''}{match.pointsChange} RP
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))
+                                                ))}
+                                            </div>
                                         )}
                                     </div>
                                 )}
 
                                 {activeTab === 'achievements' && (
                                     <div>
-                                        {/* Achievement Stats */}
-                                        <div className="grid grid-cols-4 gap-4 mb-6">
-                                            <div className="bg-navy/50 rounded-lg p-4 border border-accent/30 text-center">
-                                                <div className="text-3xl font-bold text-neon mb-1">
+                                        {/* Achievement Stats - Mobile Responsive */}
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
+                                            <div className="bg-card/40 backdrop-blur-sm rounded-xl border border-neon/30 p-3 sm:p-4 text-center hover:scale-105 transition-transform">
+                                                <div className="text-2xl sm:text-3xl font-black text-neon mb-1">
                                                     {achievements.filter(a => a.unlocked).length}
                                                 </div>
-                                                <div className="text-xs text-muted">Unlocked</div>
+                                                <div className="text-xs sm:text-sm text-muted font-semibold">Unlocked</div>
                                             </div>
-                                            <div className="bg-navy/50 rounded-lg p-4 border border-accent/30 text-center">
-                                                <div className="text-3xl font-bold text-accent mb-1">
+                                            <div className="bg-card/40 backdrop-blur-sm rounded-xl border border-accent/30 p-3 sm:p-4 text-center hover:scale-105 transition-transform">
+                                                <div className="text-2xl sm:text-3xl font-black text-accent mb-1">
                                                     {achievements.length}
                                                 </div>
-                                                <div className="text-xs text-muted">Total</div>
+                                                <div className="text-xs sm:text-sm text-muted font-semibold">Total</div>
                                             </div>
-                                            <div className="bg-navy/50 rounded-lg p-4 border border-accent/30 text-center">
-                                                <div className="text-3xl font-bold text-yellow-400 mb-1">
+                                            <div className="bg-card/40 backdrop-blur-sm rounded-xl border border-yellow-500/30 p-3 sm:p-4 text-center hover:scale-105 transition-transform">
+                                                <div className="text-2xl sm:text-3xl font-black text-yellow-400 mb-1">
                                                     {achievements.filter(a => a.unlocked && a.rarity === 'legendary').length}
                                                 </div>
-                                                <div className="text-xs text-muted">Legendary</div>
+                                                <div className="text-xs sm:text-sm text-muted font-semibold">Legendary</div>
                                             </div>
-                                            <div className="bg-navy/50 rounded-lg p-4 border border-accent/30 text-center">
-                                                <div className="text-3xl font-bold text-green-400 mb-1">
+                                            <div className="bg-card/40 backdrop-blur-sm rounded-xl border border-green-500/30 p-3 sm:p-4 text-center hover:scale-105 transition-transform">
+                                                <div className="text-2xl sm:text-3xl font-black text-green-400 mb-1">
                                                     {Math.round((achievements.filter(a => a.unlocked).length / achievements.length) * 100)}%
                                                 </div>
-                                                <div className="text-xs text-muted">Complete</div>
+                                                <div className="text-xs sm:text-sm text-muted font-semibold">Complete</div>
                                             </div>
                                         </div>
 
-                                        {/* Achievements Grid */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* Achievements Grid - Mobile Responsive */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                                             {achievements.map((achievement) => (
                                                 <div
                                                     key={achievement.id}
-                                                    className={`relative p-5 rounded-xl border-2 transition-all duration-300 ${
+                                                    className={`relative p-4 sm:p-5 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 ${
                                                         achievement.unlocked
-                                                            ? `bg-gradient-to-br ${getRarityGradient(achievement.rarity)}/20 ${getRarityColor(achievement.rarity)} hover:scale-105 hover:shadow-lg`
-                                                            : 'bg-navy/30 border-accent/30 opacity-60 hover:opacity-80'
+                                                            ? `bg-gradient-to-br ${getRarityGradient(achievement.rarity)}/20 ${getRarityColor(achievement.rarity)} hover:scale-[1.02] shadow-lg`
+                                                            : 'bg-card/30 border-accent/30 opacity-60 hover:opacity-80'
                                                     }`}
                                                 >
                                                     {/* Rarity Badge */}
                                                     {achievement.unlocked && (
-                                                        <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold uppercase ${getRarityColor(achievement.rarity)} bg-navy/80`}>
+                                                        <div className={`absolute top-2 right-2 px-2 py-0.5 sm:py-1 rounded-full text-xs font-black uppercase ${getRarityColor(achievement.rarity)} bg-navy/90 shadow-lg`}>
                                                             {achievement.rarity}
                                                         </div>
                                                     )}
 
-                                                    <div className="flex items-start gap-4">
-                                                        <div className={`text-5xl transition-transform ${achievement.unlocked ? 'animate-bounce' : 'grayscale'}`}>
+                                                    <div className="flex items-start gap-3 sm:gap-4">
+                                                        <div className={`text-3xl sm:text-4xl md:text-5xl transition-transform ${achievement.unlocked ? 'animate-bounce' : 'grayscale opacity-50'}`}>
                                                             {achievement.icon}
                                                         </div>
-                                                        <div className="flex-1">
+                                                        <div className="flex-1 min-w-0">
                                                             <div className="flex items-center gap-2 mb-1">
-                                                                <h4 className={`font-bold text-lg ${
+                                                                <h4 className={`font-black text-base sm:text-lg truncate ${
                                                                     achievement.unlocked ? getRarityColor(achievement.rarity).split(' ')[0] : 'text-muted'
                                                                 }`}>
                                                                     {achievement.name}
                                                                 </h4>
                                                             </div>
-                                                            <p className="text-sm text-muted mb-2">{achievement.description}</p>
+                                                            <p className="text-xs sm:text-sm text-muted mb-2">{achievement.description}</p>
 
                                                             {/* Progress Bar for locked achievements */}
                                                             {!achievement.unlocked && achievement.progress !== undefined && achievement.target !== undefined && (
-                                                                <div className="mt-3">
+                                                                <div className="mt-2 sm:mt-3">
                                                                     <div className="flex justify-between text-xs text-muted mb-1">
-                                                                        <span>Progress</span>
-                                                                        <span>{achievement.progress} / {achievement.target}</span>
+                                                                        <span className="font-semibold">Progress</span>
+                                                                        <span className="font-bold">{achievement.progress} / {achievement.target}</span>
                                                                     </div>
-                                                                    <div className="h-2 bg-navy rounded-full overflow-hidden">
+                                                                    <div className="h-2 bg-navy rounded-full overflow-hidden border border-accent/30">
                                                                         <div
                                                                             className="h-full bg-gradient-to-r from-accent to-neon transition-all duration-500"
                                                                             style={{ width: `${(achievement.progress / achievement.target) * 100}%` }}
@@ -462,13 +467,13 @@ export default function Profile() {
                                                             )}
                                                         </div>
                                                         {achievement.unlocked && (
-                                                            <div className="text-green-400 text-3xl">✓</div>
+                                                            <div className="text-green-400 text-2xl sm:text-3xl">✓</div>
                                                         )}
                                                     </div>
 
                                                     {/* Category Tag */}
                                                     <div className="mt-3 flex items-center gap-2">
-                                                        <span className="text-xs px-2 py-1 bg-accent/20 rounded-full text-accent font-semibold">
+                                                        <span className="text-xs px-2 py-1 bg-accent/20 rounded-full text-accent font-bold">
                                                             {getCategoryIcon(achievement.category)} {achievement.category.toUpperCase()}
                                                         </span>
                                                     </div>
