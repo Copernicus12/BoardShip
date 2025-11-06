@@ -135,25 +135,41 @@ function Ship3D({
 
             {/* Smoke effect if destroyed */}
             {isDestroyed && (
-                <mesh position={[0, 1.2, 0]}>
-                    <sphereGeometry args={[0.5, 8, 8]} />
-                    <meshStandardMaterial
-                        color="#ff4400"
-                        emissive="#ff4400"
-                        emissiveIntensity={0.8}
-                        transparent
-                        opacity={0.6}
-                    />
-                </mesh>
+                <>
+                    <mesh position={[0, 1.2, 0]}>
+                        <sphereGeometry args={[0.5, 8, 8]} />
+                        <meshStandardMaterial
+                            color="#ff4400"
+                            emissive="#ff4400"
+                            emissiveIntensity={0.8}
+                            transparent
+                            opacity={0.6}
+                        />
+                    </mesh>
+
+                    {/* Red strike-through line */}
+                    <mesh position={[0, 0.5, 0]} rotation={[0, 0, 0]}>
+                        <boxGeometry args={[shipLength + 0.5, 0.15, 0.15]} />
+                        <meshStandardMaterial
+                            color="#ff0000"
+                            emissive="#ff0000"
+                            emissiveIntensity={1}
+                        />
+                    </mesh>
+
+                    {/* Red glow effect */}
+                    <pointLight position={[0, 0.5, 0]} color="#ff0000" intensity={3} distance={shipLength + 2} />
+                </>
             )}
         </group>
     );
 }
 
-// Explosion/Hit marker
+// Explosion/Hit marker with X
 function HitMarker({ position }: { position: [number, number, number] }) {
     return (
         <group position={position}>
+            {/* Explosion sphere */}
             <mesh position={[0, 0.5, 0]}>
                 <sphereGeometry args={[0.3, 16, 16]} />
                 <meshStandardMaterial
@@ -164,22 +180,56 @@ function HitMarker({ position }: { position: [number, number, number] }) {
                     opacity={0.8}
                 />
             </mesh>
+
+            {/* X marker - first line */}
+            <mesh position={[0, 0.8, 0]} rotation={[0, 0, Math.PI / 4]}>
+                <boxGeometry args={[0.7, 0.1, 0.1]} />
+                <meshStandardMaterial
+                    color="#ff0000"
+                    emissive="#ff0000"
+                    emissiveIntensity={0.5}
+                />
+            </mesh>
+
+            {/* X marker - second line */}
+            <mesh position={[0, 0.8, 0]} rotation={[0, 0, -Math.PI / 4]}>
+                <boxGeometry args={[0.7, 0.1, 0.1]} />
+                <meshStandardMaterial
+                    color="#ff0000"
+                    emissive="#ff0000"
+                    emissiveIntensity={0.5}
+                />
+            </mesh>
+
             <pointLight position={[0, 0.5, 0]} color="#ff4400" intensity={2} distance={3} />
         </group>
     );
 }
 
-// Miss marker
+// Miss marker with checkmark/splash
 function MissMarker({ position }: { position: [number, number, number] }) {
     return (
-        <mesh position={[position[0], position[1] + 0.3, position[2]]}>
-            <sphereGeometry args={[0.2, 8, 8]} />
-            <meshStandardMaterial
-                color="#4444ff"
-                transparent
-                opacity={0.6}
-            />
-        </mesh>
+        <group position={[position[0], position[1] + 0.3, position[2]]}>
+            {/* Water splash */}
+            <mesh>
+                <sphereGeometry args={[0.2, 8, 8]} />
+                <meshStandardMaterial
+                    color="#4444ff"
+                    transparent
+                    opacity={0.6}
+                />
+            </mesh>
+
+            {/* Small checkmark/indicator */}
+            <mesh position={[0, 0.4, 0]}>
+                <sphereGeometry args={[0.1, 8, 8]} />
+                <meshStandardMaterial
+                    color="#6666ff"
+                    emissive="#6666ff"
+                    emissiveIntensity={0.3}
+                />
+            </mesh>
+        </group>
     );
 }
 

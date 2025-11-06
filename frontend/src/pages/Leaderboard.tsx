@@ -93,95 +93,70 @@ export default function Leaderboard() {
 
     return (
         <PageContainer>
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-6xl mx-auto px-2 sm:px-6">
                 {/* Compact Hero Header */}
-                <div className="mb-8 text-center relative">
+                <div className="mb-4 sm:mb-8 text-center relative">
                     <div className="absolute inset-0 bg-gradient-to-r from-neon/10 via-accent/10 to-neon/10 blur-2xl -z-10"></div>
-                    <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon via-accent to-neon mb-2 animate-pulse">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon via-accent to-neon mb-2 animate-pulse">
                         🏆 Leaderboard
                     </h1>
-                    <p className="text-sm text-muted">Top players by performance</p>
+                    <p className="text-xs sm:text-sm text-muted">Top players by performance</p>
                 </div>
 
                 {/* Compact Sorting Tabs */}
-                <div className="mb-6 flex justify-center gap-3">
+                <div className="mb-4 sm:mb-6 flex justify-center gap-2 sm:gap-3 flex-wrap">
                     <button
                         onClick={() => setSortBy('rp')}
-                        className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-sm ${
+                        className={`px-3 sm:px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-xs sm:text-sm ${
                             sortBy === 'rp'
                                 ? 'bg-gradient-to-r from-neon to-accent text-navy shadow-lg shadow-neon/50'
                                 : 'bg-card/50 border border-accent/30 text-accent hover:border-neon hover:shadow-lg hover:shadow-neon/20'
                         }`}
                     >
-                        🏆 Rank (RP)
+                        <span className="hidden sm:inline">🏆 Rank (RP)</span>
+                        <span className="sm:hidden">🏆 RP</span>
                     </button>
                     <button
                         onClick={() => setSortBy('wins')}
-                        className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-sm ${
+                        className={`px-3 sm:px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-xs sm:text-sm ${
                             sortBy === 'wins'
                                 ? 'bg-gradient-to-r from-neon to-accent text-navy shadow-lg shadow-neon/50'
                                 : 'bg-card/50 border border-accent/30 text-accent hover:border-neon hover:shadow-lg hover:shadow-neon/20'
                         }`}
                     >
-                        ⚔️ Victories
+                        <span className="hidden sm:inline">⚔️ Victories</span>
+                        <span className="sm:hidden">⚔️ Wins</span>
                     </button>
                     <button
                         onClick={() => setSortBy('winrate')}
-                        className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-sm ${
+                        className={`px-3 sm:px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-xs sm:text-sm ${
                             sortBy === 'winrate'
                                 ? 'bg-gradient-to-r from-neon to-accent text-navy shadow-lg shadow-neon/50'
                                 : 'bg-card/50 border border-accent/30 text-accent hover:border-neon hover:shadow-lg hover:shadow-neon/20'
                         }`}
                     >
-                        📊 Win Rate
+                        <span className="hidden sm:inline">📊 Win Rate</span>
+                        <span className="sm:hidden">📊 Rate</span>
                     </button>
                 </div>
 
                 {/* Compact Top 3 Podium */}
                 {!loading && Array.isArray(players) && players.length >= 3 && (
-                    <div className="grid grid-cols-3 gap-4 mb-8 items-end">
-                        {/* 2nd Place */}
-                        <div className="text-center transform transition-all duration-300 hover:scale-105">
-                            <div className="relative bg-gradient-to-br from-gray-700 via-gray-600 to-gray-700 rounded-xl p-4 mb-3 border border-gray-500 shadow-lg overflow-hidden group">
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                                <div className="relative">
-                                    <div className="text-4xl mb-2">🥈</div>
-                                    <div className="text-lg font-black text-white mb-1">{players[1]?.username || 'N/A'}</div>
-                                    {players[1]?.rank && players[1]?.icon && (
-                                        <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 rounded-full text-xs mb-2">
-                                            <span>{players[1].icon}</span>
-                                            <span className="font-semibold text-white">{players[1].rank}</span>
-                                        </div>
-                                    )}
-                                    <div className="text-xl font-black text-yellow-300 mb-1">{players[1]?.score || 0} RP</div>
-                                    <div className="text-xs text-gray-300">
-                                        <span className="text-green-400 font-bold">{players[1]?.wins || 0}W</span>
-                                        <span className="mx-1">-</span>
-                                        <span className="text-red-400 font-bold">{players[1]?.losses || 0}L</span>
-                                        <span className="mx-1">•</span>
-                                        <span className="text-yellow-300 font-bold">{(players[1]?.winRate || 0).toFixed(1)}%</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="h-20 bg-gradient-to-t from-gray-700 to-gray-600 border border-gray-500 rounded-t-xl flex items-center justify-center shadow-lg">
-                                <span className="text-4xl font-black text-white">2</span>
-                            </div>
-                        </div>
-
-                        {/* 1st Place */}
-                        <div className="text-center transform transition-all duration-300 hover:scale-105 -mt-4">
-                            <div className="relative bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-xl p-5 mb-3 border border-yellow-300 shadow-xl shadow-yellow-500/50 overflow-hidden group">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-8 sm:items-end">
+                        {/* 1st Place - Show first on mobile */}
+                        <div className="text-center transform transition-all duration-300 hover:scale-105 sm:-mt-4 sm:order-2">
+                            <div className="relative bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-xl p-3 sm:p-5 mb-2 sm:mb-3 border border-yellow-300 shadow-xl shadow-yellow-500/50 overflow-hidden group">
                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                                 <div className="relative">
-                                    <div className="text-5xl mb-2 animate-pulse">👑</div>
-                                    <div className="text-2xl font-black text-navy mb-1">{players[0]?.username || 'N/A'}</div>
+                                    <div className="text-4xl sm:text-5xl mb-2 animate-pulse">👑</div>
+                                    <div className="text-xl sm:text-2xl font-black text-navy mb-1">{players[0]?.username || 'N/A'}</div>
                                     {players[0]?.rank && players[0]?.icon && (
                                         <div className="inline-flex items-center gap-1 px-2 py-1 bg-navy/30 rounded-full text-xs mb-2">
-                                            <span className="text-lg">{players[0].icon}</span>
+                                            <span className="text-base sm:text-lg">{players[0].icon}</span>
                                             <span className="font-black text-navy">{players[0].rank}</span>
                                         </div>
                                     )}
-                                    <div className="text-2xl font-black text-navy mb-1">{players[0]?.score || 0} RP</div>
+                                    <div className="text-xl sm:text-2xl font-black text-navy mb-1">{players[0]?.score || 0} RP</div>
                                     <div className="text-xs text-navy/80 font-semibold">
                                         <span className="text-green-700">{players[0]?.wins || 0}W</span>
                                         <span className="mx-1">-</span>
@@ -191,25 +166,53 @@ export default function Leaderboard() {
                                     </div>
                                 </div>
                             </div>
-                            <div className="h-28 bg-gradient-to-t from-yellow-500 to-yellow-400 border border-yellow-300 rounded-t-xl flex items-center justify-center shadow-xl shadow-yellow-500/50">
-                                <span className="text-5xl font-black text-navy">1</span>
+                            <div className="h-20 sm:h-28 bg-gradient-to-t from-yellow-500 to-yellow-400 border border-yellow-300 rounded-t-xl flex items-center justify-center shadow-xl shadow-yellow-500/50">
+                                <span className="text-4xl sm:text-5xl font-black text-navy">1</span>
+                            </div>
+                        </div>
+                        
+                        {/* 2nd Place */}
+                        <div className="text-center transform transition-all duration-300 hover:scale-105 sm:order-1">
+                            <div className="relative bg-gradient-to-br from-gray-700 via-gray-600 to-gray-700 rounded-xl p-3 sm:p-4 mb-2 sm:mb-3 border border-gray-500 shadow-lg overflow-hidden group">
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                                <div className="relative">
+                                    <div className="text-3xl sm:text-4xl mb-2">🥈</div>
+                                    <div className="text-base sm:text-lg font-black text-white mb-1">{players[1]?.username || 'N/A'}</div>
+                                    {players[1]?.rank && players[1]?.icon && (
+                                        <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 rounded-full text-xs mb-2">
+                                            <span>{players[1].icon}</span>
+                                            <span className="font-semibold text-white">{players[1].rank}</span>
+                                        </div>
+                                    )}
+                                    <div className="text-lg sm:text-xl font-black text-yellow-300 mb-1">{players[1]?.score || 0} RP</div>
+                                    <div className="text-xs text-gray-300">
+                                        <span className="text-green-400 font-bold">{players[1]?.wins || 0}W</span>
+                                        <span className="mx-1">-</span>
+                                        <span className="text-red-400 font-bold">{players[1]?.losses || 0}L</span>
+                                        <span className="mx-1">•</span>
+                                        <span className="text-yellow-300 font-bold">{(players[1]?.winRate || 0).toFixed(1)}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="h-16 sm:h-20 bg-gradient-to-t from-gray-700 to-gray-600 border border-gray-500 rounded-t-xl flex items-center justify-center shadow-lg">
+                                <span className="text-3xl sm:text-4xl font-black text-white">2</span>
                             </div>
                         </div>
 
                         {/* 3rd Place */}
-                        <div className="text-center transform transition-all duration-300 hover:scale-105">
-                            <div className="relative bg-gradient-to-br from-amber-700 via-amber-600 to-amber-700 rounded-xl p-4 mb-3 border border-amber-500 shadow-lg overflow-hidden group">
+                        <div className="text-center transform transition-all duration-300 hover:scale-105 sm:order-3">
+                            <div className="relative bg-gradient-to-br from-amber-700 via-amber-600 to-amber-700 rounded-xl p-3 sm:p-4 mb-2 sm:mb-3 border border-amber-500 shadow-lg overflow-hidden group">
                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                                 <div className="relative">
-                                    <div className="text-4xl mb-2">🥉</div>
-                                    <div className="text-lg font-black text-white mb-1">{players[2]?.username || 'N/A'}</div>
+                                    <div className="text-3xl sm:text-4xl mb-2">🥉</div>
+                                    <div className="text-base sm:text-lg font-black text-white mb-1">{players[2]?.username || 'N/A'}</div>
                                     {players[2]?.rank && players[2]?.icon && (
                                         <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 rounded-full text-xs mb-2">
                                             <span>{players[2].icon}</span>
                                             <span className="font-semibold text-white">{players[2].rank}</span>
                                         </div>
                                     )}
-                                    <div className="text-xl font-black text-amber-300 mb-1">{players[2]?.score || 0} RP</div>
+                                    <div className="text-lg sm:text-xl font-black text-amber-300 mb-1">{players[2]?.score || 0} RP</div>
                                     <div className="text-xs text-amber-100">
                                         <span className="text-green-300 font-bold">{players[2]?.wins || 0}W</span>
                                         <span className="mx-1">-</span>
@@ -219,8 +222,8 @@ export default function Leaderboard() {
                                     </div>
                                 </div>
                             </div>
-                            <div className="h-16 bg-gradient-to-t from-amber-700 to-amber-600 border border-amber-500 rounded-t-xl flex items-center justify-center shadow-lg">
-                                <span className="text-3xl font-black text-white">3</span>
+                            <div className="h-14 sm:h-16 bg-gradient-to-t from-amber-700 to-amber-600 border border-amber-500 rounded-t-xl flex items-center justify-center shadow-lg">
+                                <span className="text-2xl sm:text-3xl font-black text-white">3</span>
                             </div>
                         </div>
                     </div>
@@ -228,32 +231,32 @@ export default function Leaderboard() {
 
                 {/* Compact Full Rankings Table */}
                 <div className="bg-gradient-to-b from-card to-card/50 rounded-xl border border-accent/30 overflow-hidden shadow-xl backdrop-blur-sm">
-                    <div className="bg-gradient-to-r from-accent/20 via-neon/20 to-accent/20 px-6 py-3 border-b border-accent/30">
-                        <h2 className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-neon to-accent">
+                    <div className="bg-gradient-to-r from-accent/20 via-neon/20 to-accent/20 px-3 sm:px-6 py-3 border-b border-accent/30">
+                        <h2 className="text-base sm:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-neon to-accent">
                             Complete Rankings
                         </h2>
                     </div>
 
                     {loading ? (
-                        <div className="p-12 text-center">
+                        <div className="p-8 sm:p-12 text-center">
                             <div className="relative inline-block">
-                                <div className="animate-spin rounded-full h-12 w-12 border-4 border-accent border-t-neon"></div>
-                                <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border-4 border-neon opacity-20"></div>
+                                <div className="animate-spin rounded-full h-10 sm:h-12 w-10 sm:w-12 border-4 border-accent border-t-neon"></div>
+                                <div className="absolute inset-0 animate-ping rounded-full h-10 sm:h-12 w-10 sm:w-12 border-4 border-neon opacity-20"></div>
                             </div>
-                            <p className="text-muted mt-4">Loading rankings...</p>
+                            <p className="text-muted mt-4 text-sm sm:text-base">Loading rankings...</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-accent/20">
                             {Array.isArray(players) && players.length > 0 ? players.map((p, i) => (
                                 <div
                                     key={p.username}
-                                    className={`group flex items-center justify-between px-6 py-3 transition-all duration-300 hover:bg-gradient-to-r hover:from-neon/10 hover:via-accent/5 hover:to-transparent ${
+                                    className={`group flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 sm:px-6 py-3 sm:py-3 transition-all duration-300 hover:bg-gradient-to-r hover:from-neon/10 hover:via-accent/5 hover:to-transparent ${
                                         i < 3 ? 'bg-gradient-to-r from-accent/5 to-transparent' : ''
                                     }`}
                                 >
-                                    <div className="flex items-center gap-4 flex-1">
+                                    <div className="flex items-center gap-2 sm:gap-4 flex-1 w-full sm:w-auto mb-2 sm:mb-0">
                                         {/* Rank Badge */}
-                                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-black text-lg shadow-md transition-all duration-300 group-hover:scale-110 ${
+                                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center font-black text-base sm:text-lg shadow-md transition-all duration-300 group-hover:scale-110 flex-shrink-0 ${
                                             i === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-navy border border-yellow-300' :
                                             i === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-600 text-white border border-gray-300' :
                                             i === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-white border border-amber-500' :
@@ -263,13 +266,13 @@ export default function Leaderboard() {
                                         </div>
 
                                         {/* Player Info */}
-                                        <div className="flex-1">
-                                            <div className={`font-bold text-lg mb-0.5 transition-colors ${
+                                        <div className="flex-1 min-w-0">
+                                            <div className={`font-bold text-base sm:text-lg mb-0.5 transition-colors truncate ${
                                                 i < 3 ? 'text-transparent bg-clip-text bg-gradient-to-r from-neon to-accent' : 'text-accent group-hover:text-neon'
                                             }`}>
                                                 {p.username}
                                             </div>
-                                            <div className="flex items-center gap-2 text-xs">
+                                            <div className="flex items-center gap-2 text-xs flex-wrap">
                                                 {p.rank && p.icon && (
                                                     <span className="px-2 py-0.5 bg-accent/20 border border-accent/50 rounded-full flex items-center gap-1 font-semibold">
                                                         <span>{p.icon}</span>
@@ -282,11 +285,11 @@ export default function Leaderboard() {
                                     </div>
 
                                     {/* Stats Grid */}
-                                    <div className="flex items-center gap-6">
+                                    <div className="grid grid-cols-4 sm:flex sm:items-center gap-2 sm:gap-6 w-full sm:w-auto">
                                         {/* RP */}
-                                        <div className="text-center min-w-[90px]">
+                                        <div className="text-center sm:min-w-[90px]">
                                             <div className="text-xs text-muted mb-0.5 font-semibold uppercase tracking-wider">RP</div>
-                                            <div className={`text-2xl font-black transition-colors ${
+                                            <div className={`text-xl sm:text-2xl font-black transition-colors ${
                                                 i < 3 ? 'text-transparent bg-clip-text bg-gradient-to-r from-neon to-accent' : 'text-accent group-hover:text-neon'
                                             }`}>
                                                 {p.score.toLocaleString()}
@@ -294,9 +297,9 @@ export default function Leaderboard() {
                                         </div>
 
                                         {/* W/L */}
-                                        <div className="text-center min-w-[80px]">
+                                        <div className="text-center sm:min-w-[80px]">
                                             <div className="text-xs text-muted mb-0.5 font-semibold uppercase tracking-wider">W/L</div>
-                                            <div className="text-lg font-bold flex items-center justify-center gap-1">
+                                            <div className="text-base sm:text-lg font-bold flex items-center justify-center gap-1">
                                                 <span className="text-green-400">{p.wins}</span>
                                                 <span className="text-muted text-sm">-</span>
                                                 <span className="text-red-400">{p.losses}</span>
@@ -304,9 +307,9 @@ export default function Leaderboard() {
                                         </div>
 
                                         {/* Win Rate */}
-                                        <div className="text-center min-w-[100px]">
+                                        <div className="text-center sm:min-w-[100px]">
                                             <div className="text-xs text-muted mb-0.5 font-semibold uppercase tracking-wider">Win Rate</div>
-                                            <div className={`text-lg font-black mb-1 ${
+                                            <div className={`text-base sm:text-lg font-black mb-1 ${
                                                 p.winRate >= 70 ? 'text-green-400' :
                                                 p.winRate >= 60 ? 'text-lime-400' :
                                                 p.winRate >= 50 ? 'text-yellow-400' :
@@ -330,26 +333,26 @@ export default function Leaderboard() {
                                         </div>
 
                                         {/* Total Games */}
-                                        <div className="text-center min-w-[70px]">
+                                        <div className="text-center sm:min-w-[70px]">
                                             <div className="text-xs text-muted mb-0.5 font-semibold uppercase tracking-wider">Games</div>
-                                            <div className="text-lg font-bold text-accent">
+                                            <div className="text-base sm:text-lg font-bold text-accent">
                                                 {p.totalGames}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             )) : (
-                                <div className="p-12 text-center">
-                                    <div className="text-5xl mb-3 opacity-50">🏆</div>
-                                    <p className="text-muted">No champions yet. Be the first!</p>
+                                <div className="p-8 sm:p-12 text-center">
+                                    <div className="text-4xl sm:text-5xl mb-3 opacity-50">🏆</div>
+                                    <p className="text-muted text-sm sm:text-base">No champions yet. Be the first!</p>
                                 </div>
                             )}
                         </div>
                     )}
 
                     {error && (
-                        <div className="p-4 bg-gradient-to-r from-red-500/20 to-red-500/10 border-t border-red-500/30">
-                            <p className="text-red-400 text-sm font-semibold">⚠️ {error}</p>
+                        <div className="p-3 sm:p-4 bg-gradient-to-r from-red-500/20 to-red-500/10 border-t border-red-500/30">
+                            <p className="text-red-400 text-xs sm:text-sm font-semibold">⚠️ {error}</p>
                         </div>
                     )}
                 </div>
