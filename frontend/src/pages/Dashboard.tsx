@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import PageContainer from "../components/PageContainer";
 import api from '../utils/api';
 import useAuth from '../state/auth';
+import { calculateAchievements, getRarityColor, getRarityGradient, type Achievement } from '../utils/achievements';
 
 type MatchOutcome = 'won' | 'lost' | 'draw';
 
@@ -28,6 +29,18 @@ type RecentMatch = {
     playedAt: string | null;
 };
 
+type RankInfo = {
+    rank: string;
+    icon: string;
+    color: string;
+    currentRP: number;
+    minRP: number;
+    maxRP: number;
+    progressToNext: number;
+    nextRank: string | null;
+    rpToNext: number;
+};
+
 type UserStats = {
     totalGames: number;
     wins: number;
@@ -35,6 +48,7 @@ type UserStats = {
     winRate: number;
     currentStreak: number;
     bestStreak: number;
+    rankInfo?: RankInfo;
 };
 
 const fallbackMatches: RecentMatch[] = [
@@ -227,11 +241,21 @@ export default function Dashboard() {
         };
     }, []);
 
-    const recentAchievements = [
-        { id: 1, name: 'First Victory', icon: '🏆', date: 'Today' },
-        { id: 2, name: 'Winning Streak', icon: '🔥', date: 'Yesterday' },
-        { id: 3, name: 'Sharp Shooter', icon: '🎯', date: '2 days ago' },
-    ];
+    // Calculate achievements based on stats
+    const achievements = stats ? calculateAchievements({
+        totalGames: stats.totalGames,
+        wins: stats.wins,
+        losses: stats.losses,
+        currentStreak: stats.currentStreak,
+        bestStreak: stats.bestStreak,
+        winRate: stats.winRate,
+        rank: stats.rankInfo?.rank,
+    }) : [];
+
+    // Get recently unlocked achievements (last 3 unlocked)
+    const recentAchievements = achievements
+        .filter(a => a.unlocked)
+        .slice(0, 3);
 
     return (
         <PageContainer>
@@ -290,8 +314,24 @@ export default function Dashboard() {
 
                     <div className="bg-card border border-accent rounded-xl p-6 hover:border-neon transition">
                         <div className="text-sm text-muted mb-2">Rank</div>
-                        <div className="text-3xl font-bold text-neon mb-1">—</div>
-                        <div className="text-xs text-accent">Coming soon</div>
+                        {loadingStats ? (
+                            <div className="h-9 flex items-center">
+                                <div className="h-6 w-16 animate-pulse rounded bg-accent/20"></div>
+                            </div>
+                        ) : stats.rankInfo ? (
+                            <>
+                                <div className="text-3xl font-bold text-neon mb-1 flex items-center gap-2">
+                                    <span>{stats.rankInfo.icon}</span>
+                                    <span>{stats.rankInfo.rank}</span>
+                                </div>
+                                <div className="text-xs text-accent">{stats.rankInfo.currentRP} RP</div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="text-3xl font-bold text-neon mb-1">🥉 Bronze</div>
+                                <div className="text-xs text-accent">0 RP</div>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -384,25 +424,78 @@ export default function Dashboard() {
 
                     {/* Achievements & Quick Actions */}
                     <div className="space-y-6">
+                        {/* Rank Progress */}
+                        {stats.rankInfo && !loadingStats && (
+                            <div className="bg-card border border-accent rounded-xl p-6">
+                                <h3 className="text-xl font-bold text-accent mb-4">Rank Progress</h3>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-3xl">{stats.rankInfo.icon}</span>
+                                            <div>
+                                                <div className="font-bold text-neon">{stats.rankInfo.rank}</div>
+                                                <div className="text-xs text-muted">{stats.rankInfo.currentRP} RP</div>
+                                            </div>
+                                        </div>
+                                        {stats.rankInfo.nextRank && (
+                                            <div className="text-right">
+                                                <div className="text-xs text-muted">Next Rank</div>
+                                                <div className="text-sm font-semibold text-accent">{stats.rankInfo.nextRank}</div>
+                                                <div className="text-xs text-muted">{stats.rankInfo.rpToNext} RP to go</div>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {stats.rankInfo.nextRank && (
+                                        <div>
+                                            <div className="flex justify-between text-xs text-muted mb-1">
+                                                <span>{stats.rankInfo.minRP} RP</span>
+                                                <span>{stats.rankInfo.progressToNext}%</span>
+                                                <span>{stats.rankInfo.maxRP} RP</span>
+                                            </div>
+                                            <div className="h-2 bg-navy rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-gradient-to-r from-accent to-neon transition-all duration-500"
+                                                    style={{ width: `${stats.rankInfo.progressToNext}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Recent Achievements */}
                         <div className="bg-card border border-accent rounded-xl p-6">
-                            <h3 className="text-xl font-bold text-accent mb-4">Recent Achievements</h3>
-                            <div className="space-y-3">
-                                {recentAchievements.map((achievement) => (
-                                    <div
-                                        key={achievement.id}
-                                        className="flex items-center gap-3 p-3 bg-navy/50 border border-accent/30 rounded-lg"
-                                    >
-                                        <div className="text-3xl">{achievement.icon}</div>
-                                        <div>
-                                            <div className="font-semibold text-accent text-sm">
-                                                {achievement.name}
-                                            </div>
-                                            <div className="text-xs text-muted">{achievement.date}</div>
-                                        </div>
-                                    </div>
-                                ))}
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-xl font-bold text-accent">Recent Achievements</h3>
+                                <Link to="/profile" className="text-neon hover:underline text-xs">
+                                    View All →
+                                </Link>
                             </div>
+                            {recentAchievements.length > 0 ? (
+                                <div className="space-y-3">
+                                    {recentAchievements.map((achievement) => (
+                                        <div
+                                            key={achievement.id}
+                                            className={`flex items-center gap-3 p-3 bg-gradient-to-r ${getRarityGradient(achievement.rarity)}/20 border ${getRarityColor(achievement.rarity)} rounded-lg hover:scale-105 transition-transform`}
+                                        >
+                                            <div className="text-3xl">{achievement.icon}</div>
+                                            <div className="flex-1">
+                                                <div className={`font-semibold text-sm ${getRarityColor(achievement.rarity).split(' ')[0]}`}>
+                                                    {achievement.name}
+                                                </div>
+                                                <div className="text-xs text-muted">{achievement.description}</div>
+                                            </div>
+                                            <div className="text-green-400 text-xl">✓</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-6">
+                                    <div className="text-4xl mb-2 opacity-50">🏆</div>
+                                    <p className="text-muted text-sm">Play games to unlock achievements!</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Quick Actions */}

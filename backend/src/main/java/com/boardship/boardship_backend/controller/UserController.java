@@ -4,6 +4,7 @@ import com.boardship.backend.model.Match;
 import com.boardship.backend.model.User;
 import com.boardship.backend.repository.MatchRepository;
 import com.boardship.backend.repository.UserRepository;
+import com.boardship.backend.util.RankingUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -118,13 +119,18 @@ public class UserController {
         // Calculate win rate
         double winRate = totalGames > 0 ? (double) wins / totalGames * 100 : 0;
 
+        // Get ranking information
+        int rankingPoints = user.getRankingPoints() != null ? user.getRankingPoints() : 0;
+        RankingUtil.RankInfo rankInfo = RankingUtil.getRankInfo(rankingPoints);
+
         UserStatsResponse stats = new UserStatsResponse(
                 totalGames,
                 wins,
                 losses,
                 Math.round(winRate * 10) / 10.0, // Round to 1 decimal place
                 currentStreak,
-                bestStreak
+                bestStreak,
+                rankInfo
         );
 
         return ResponseEntity.ok(stats);
@@ -138,6 +144,7 @@ public class UserController {
             int losses,
             double winRate,
             int currentStreak,
-            int bestStreak
+            int bestStreak,
+            RankingUtil.RankInfo rankInfo
     ) {}
 }

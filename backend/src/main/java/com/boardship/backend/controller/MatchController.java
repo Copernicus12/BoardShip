@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
@@ -22,10 +23,25 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/matches")
 @RequiredArgsConstructor
+@CrossOrigin
 public class MatchController {
 
     private final MatchRepository matchRepository;
     private final UserRepository userRepository;
+
+    @GetMapping("/history")
+    public ResponseEntity<List<Match>> getMatchHistory(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+
+        List<Match> matches = matchRepository.findByPlayerIdOrderByPlayedAtDesc(user.getId());
+        return ResponseEntity.ok(matches);
+    }
 
     @GetMapping("/recent")
     public ResponseEntity<List<RecentMatchResponse>> getRecentMatches(

@@ -8,6 +8,7 @@ import com.boardship.backend.repository.GameStateRepository;
 import com.boardship.backend.repository.LobbyRepository;
 import com.boardship.backend.repository.MatchRepository;
 import com.boardship.backend.repository.UserRepository;
+import com.boardship.backend.util.RankingUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -308,21 +309,19 @@ public class GameController {
                 Integer loserRpChange = null;
 
                 if ("ranked".equals(gameMode)) {
-                    // Calculate RP based on performance
-                    // Winner gets +20 to +30 RP, loser gets -10 to -20 RP
-                    int defenderHits = roomPlayerHits.get(roomId).getOrDefault(defenderId,
-                                                                               java.util.concurrent.ConcurrentHashMap.newKeySet()).size();
+                    // Get current RP for both players
+                    User winner = userRepository.findById(attackerId).orElse(null);
+                    User loser = userRepository.findById(defenderId).orElse(null);
 
-                    // Better performance = more RP
-                    // If winner hit all ships with minimal damage taken, they get more RP
-                    int performanceBonus = Math.max(0, 10 - defenderHits);
-                    winnerRpChange = 20 + performanceBonus;
+                    int winnerCurrentRP = winner != null && winner.getRankingPoints() != null ? winner.getRankingPoints() : 0;
+                    int loserCurrentRP = loser != null && loser.getRankingPoints() != null ? loser.getRankingPoints() : 0;
 
-                    int performancePenalty = Math.min(0, defenderHits - 5);
-                    loserRpChange = -15 + performancePenalty;
+                    // Use RankingUtil to calculate RP changes
+                    winnerRpChange = RankingUtil.calculateRPChange(true, winnerCurrentRP, loserCurrentRP);
+                    loserRpChange = RankingUtil.calculateRPChange(false, loserCurrentRP, winnerCurrentRP);
 
-                    log.info("Ranked mode RP changes: winner {} gets +{}, loser {} gets {}",
-                             attackerId, winnerRpChange, defenderId, loserRpChange);
+                    log.info("Ranked mode RP changes: winner {} (RP: {}) gets +{}, loser {} (RP: {}) gets {}",
+                             attackerId, winnerCurrentRP, winnerRpChange, defenderId, loserCurrentRP, loserRpChange);
                 }
 
                 persistMatchResult(roomId, attackerId, defenderId, winnerRpChange, loserRpChange);
@@ -628,6 +627,22 @@ public class GameController {
                 .build();
 
             matchRepository.saveAll(java.util.List.of(winnerMatch, loserMatch));
+
+            // Update ranking points for ranked mode
+            if ("Ranked".equalsIgnoreCase(mode) && winnerRp != null && loserRp != null) {
+                if (winner != null) {
+                    int currentRP = winner.getRankingPoints() != null ? winner.getRankingPoints() : 0;
+                    winner.setRankingPoints(Math.max(0, currentRP + winnerRp));
+                    userRepository.save(winner);
+                    log.info("Updated winner {} RP: {} -> {}", winnerId, currentRP, winner.getRankingPoints());
+                }
+                if (loser != null) {
+                    int currentRP = loser.getRankingPoints() != null ? loser.getRankingPoints() : 0;
+                    loser.setRankingPoints(Math.max(0, currentRP + loserRp));
+                    userRepository.save(loser);
+                    log.info("Updated loser {} RP: {} -> {}", loserId, currentRP, loser.getRankingPoints());
+                }
+            }
 
             log.info("Saved match result for room {} (winner: {}, loser: {})", roomId, winnerId, loserId);
         } catch (Exception e) {

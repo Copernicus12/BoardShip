@@ -258,6 +258,11 @@ export default function Game() {
                             console.log(payload.isHit ? '💥 Opponent HIT my ship!' : '🌊 Opponent MISSED');
                             setOpponentAttacks(prev => [...prev, attack]);
                         }
+                    } else if (payload.type === 'ATTACK_ERROR') {
+                        // Handle attack error (e.g., cell already attacked)
+                        console.warn('⚠️ Attack error:', payload.message, { row: payload.row, col: payload.col });
+                        // Optionally show a toast notification to the user
+                        // For now, just log it - the frontend check should prevent this
                     } else if (payload.type === 'TURN_CHANGE') {
                         console.log('🔄 Turn changed (after MISS):', payload);
                         const isMyNewTurn = payload.currentPlayer === user?.id;
@@ -425,6 +430,13 @@ export default function Game() {
     const handleCellClick = (row: number, col: number) => {
         if (!isMyTurn || gamePhase !== 'playing') {
             console.log('❌ Not your turn or game not started', { isMyTurn, gamePhase });
+            return;
+        }
+
+        // Check if this cell has already been attacked
+        const alreadyAttacked = myAttacks.some(attack => attack.row === row && attack.col === col);
+        if (alreadyAttacked) {
+            console.log('❌ Cell already attacked', { row, col });
             return;
         }
 
