@@ -30,7 +30,7 @@ public class MatchController {
     private final UserRepository userRepository;
 
     @GetMapping("/history")
-    public ResponseEntity<List<Match>> getMatchHistory(Authentication authentication) {
+    public ResponseEntity<List<RecentMatchResponse>> getMatchHistory(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -40,7 +40,11 @@ public class MatchController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
 
         List<Match> matches = matchRepository.findByPlayerIdOrderByPlayedAtDesc(user.getId());
-        return ResponseEntity.ok(matches);
+        List<RecentMatchResponse> response = matches.stream()
+                .map(RecentMatchResponse::fromMatch)
+                .toList();
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/recent")

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import PageContainer from "../components/PageContainer";
 import api from '../utils/api';
 import useAuth from '../state/auth';
-import { calculateAchievements, getRarityColor, getRarityGradient, type Achievement } from '../utils/achievements';
+import { calculateAchievements, getRarityColor, getRarityGradient } from '../utils/achievements';
 
 type MatchOutcome = 'won' | 'lost' | 'draw';
 

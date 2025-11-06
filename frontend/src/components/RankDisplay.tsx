@@ -26,11 +26,11 @@ const RankDisplay: React.FC<RankDisplayProps> = ({
     const getRankGradient = (rank: string) => {
         switch (rank.toLowerCase()) {
             case 'bronze':
-                return 'from-amber-700 to-amber-900';
+                return 'from-orange-400 to-amber-700';
             case 'silver':
-                return 'from-gray-300 to-gray-500';
+                return 'from-slate-300 to-gray-500';
             case 'gold':
-                return 'from-yellow-300 to-yellow-600';
+                return 'from-yellow-400 to-amber-600';
             case 'diamond':
                 return 'from-cyan-300 to-blue-500';
             case 'platinum':
@@ -43,9 +43,9 @@ const RankDisplay: React.FC<RankDisplayProps> = ({
     const getRankBorderColor = (rank: string) => {
         switch (rank.toLowerCase()) {
             case 'bronze':
-                return 'border-amber-700';
+                return 'border-orange-400';
             case 'silver':
-                return 'border-gray-400';
+                return 'border-slate-300';
             case 'gold':
                 return 'border-yellow-400';
             case 'diamond':

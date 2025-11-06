@@ -3,7 +3,7 @@ import useAuth from "../state/auth";
 import PageContainer from "../components/PageContainer";
 import RankDisplay from "../components/RankDisplay";
 import api from "../utils/api";
-import { calculateAchievements, getRarityColor, getRarityGradient, getCategoryIcon, type Achievement } from '../utils/achievements';
+import { calculateAchievements, getRarityColor, getRarityGradient, getCategoryIcon } from '../utils/achievements';
 
 interface RankInfo {
     rank: string;
@@ -29,34 +29,82 @@ interface UserStats {
 
 interface Match {
     id: string;
-    playerUsername: string;
-    opponentUsername: string;
+    opponent: string;
     mode: string;
     result: string;
     score: string;
     pointsChange: number | null;
+    durationSeconds: number | null;
     playedAt: string;
+}
+
+interface ModeStats {
+    mode: string;
+    totalGames: number;
+    wins: number;
+    losses: number;
+    winRate: number;
+}
+
+interface StatsByMode {
+    ranked: ModeStats;
+    classic: ModeStats;
+    speed: ModeStats;
+}
+
+interface FrequentOpponent {
+    username: string;
+    totalGames: number;
+    wins: number;
+    losses: number;
+    winRate: number;
+}
+
+interface RankProgressPoint {
+    timestamp: string;
+    rpBefore: number;
+    rpAfter: number;
+    change: number;
+    rank: string;
 }
 
 export default function Profile() {
     const { user, logout } = useAuth();
-    const [activeTab, setActiveTab] = useState<'overview' | 'matches' | 'achievements'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'matches' | 'achievements' | 'stats'>('overview');
     const [stats, setStats] = useState<UserStats | null>(null);
     const [matches, setMatches] = useState<Match[]>([]);
+    const [statsByMode, setStatsByMode] = useState<StatsByMode | null>(null);
+    const [frequentOpponents, setFrequentOpponents] = useState<FrequentOpponent[]>([]);
+    const [rankHistory, setRankHistory] = useState<RankProgressPoint[]>([]);
+    const [matchFilter, setMatchFilter] = useState<'all' | 'ranked' | 'classic' | 'speed'>('all');
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const [statsResponse, matchesResponse] = await Promise.all([
-                    api.get('/users/stats'),
-                    api.get('/matches/history')
+                const [statsResponse, matchesResponse, statsByModeResponse, opponentsResponse, rankHistoryResponse] = await Promise.all([
+                    api.get('/api/users/stats'),
+                    api.get('/api/matches/history'),
+                    api.get('/api/users/stats/by-mode'),
+                    api.get('/api/users/opponents/frequent'),
+                    api.get('/api/users/rank-history')
                 ]);
                 setStats(statsResponse.data);
-                setMatches(matchesResponse.data || []);
+
+                // Ensure matches is always an array
+                const matchesData = matchesResponse.data;
+                setMatches(Array.isArray(matchesData) ? matchesData : []);
+
+                // Set new data
+                setStatsByMode(statsByModeResponse.data);
+                setFrequentOpponents(Array.isArray(opponentsResponse.data) ? opponentsResponse.data : []);
+                setRankHistory(Array.isArray(rankHistoryResponse.data) ? rankHistoryResponse.data : []);
             } catch (error) {
                 console.error('Failed to fetch profile data:', error);
+                setMatches([]); // Set empty array on error
+                setFrequentOpponents([]);
+                setRankHistory([]);
             } finally {
                 setLoading(false);
             }
@@ -192,6 +240,16 @@ export default function Profile() {
                                 >
                                     Achievements
                                 </button>
+                                <button
+                                    onClick={() => setActiveTab('stats')}
+                                    className={`flex-1 px-6 py-4 font-semibold transition ${
+                                        activeTab === 'stats'
+                                            ? 'bg-accent/10 text-neon border-b-2 border-neon'
+                                            : 'text-muted hover:text-accent'
+                                    }`}
+                                >
+                                    Detailed Stats
+                                </button>
                             </div>
 
                             <div className="p-6">
@@ -233,13 +291,61 @@ export default function Profile() {
                                 )}
 
                                 {activeTab === 'matches' && (
-                                    <div className="space-y-3">
-                                        {matches.length === 0 ? (
+                                    <div className="space-y-4">
+                                        {/* Filter Buttons */}
+                                        <div className="flex gap-2 flex-wrap">
+                                            <button
+                                                onClick={() => setMatchFilter('all')}
+                                                className={`px-4 py-2 rounded-lg font-semibold transition ${
+                                                    matchFilter === 'all'
+                                                        ? 'bg-neon text-navy border-2 border-neon'
+                                                        : 'bg-navy/50 text-muted border border-accent/30 hover:border-neon/50'
+                                                }`}
+                                            >
+                                                All Modes
+                                            </button>
+                                            <button
+                                                onClick={() => setMatchFilter('ranked')}
+                                                className={`px-4 py-2 rounded-lg font-semibold transition ${
+                                                    matchFilter === 'ranked'
+                                                        ? 'bg-neon text-navy border-2 border-neon'
+                                                        : 'bg-navy/50 text-muted border border-accent/30 hover:border-neon/50'
+                                                }`}
+                                            >
+                                                Ranked
+                                            </button>
+                                            <button
+                                                onClick={() => setMatchFilter('classic')}
+                                                className={`px-4 py-2 rounded-lg font-semibold transition ${
+                                                    matchFilter === 'classic'
+                                                        ? 'bg-neon text-navy border-2 border-neon'
+                                                        : 'bg-navy/50 text-muted border border-accent/30 hover:border-neon/50'
+                                                }`}
+                                            >
+                                                Classic
+                                            </button>
+                                            <button
+                                                onClick={() => setMatchFilter('speed')}
+                                                className={`px-4 py-2 rounded-lg font-semibold transition ${
+                                                    matchFilter === 'speed'
+                                                        ? 'bg-neon text-navy border-2 border-neon'
+                                                        : 'bg-navy/50 text-muted border border-accent/30 hover:border-neon/50'
+                                                }`}
+                                            >
+                                                Speed
+                                            </button>
+                                        </div>
+
+                                        {/* Matches List */}
+                                        {!Array.isArray(matches) || matches.length === 0 ? (
                                             <div className="text-center text-muted py-8">
                                                 No matches played yet. Start playing to see your match history!
                                             </div>
                                         ) : (
-                                            matches.slice(0, 10).map((match) => (
+                                            matches
+                                                .filter(match => matchFilter === 'all' || match.mode.toLowerCase() === matchFilter)
+                                                .slice(0, 10)
+                                                .map((match) => (
                                                 <div
                                                     key={match.id}
                                                     className="flex items-center justify-between p-4 bg-navy/50 border border-accent/30 rounded-lg hover:border-neon/50 transition"
@@ -253,7 +359,7 @@ export default function Profile() {
                                                             {match.result === 'won' ? '✓' : '✗'}
                                                         </div>
                                                         <div>
-                                                            <div className="font-semibold text-accent">vs {match.opponentUsername}</div>
+                                                            <div className="font-semibold text-accent">vs {match.opponent}</div>
                                                             <div className="text-sm text-muted">{match.mode} • {formatDate(match.playedAt)}</div>
                                                         </div>
                                                     </div>
@@ -368,6 +474,139 @@ export default function Profile() {
                                                     </div>
                                                 </div>
                                             ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'stats' && (
+                                    <div className="space-y-6">
+                                        {/* Stats by Mode */}
+                                        <div>
+                                            <h3 className="text-2xl font-bold text-neon mb-4">📊 Stats by Mode</h3>
+                                            {statsByMode ? (
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    {[statsByMode.ranked, statsByMode.classic, statsByMode.speed].map((modeStats) => (
+                                                        <div key={modeStats.mode} className="bg-navy/50 border border-accent/30 rounded-xl p-6 hover:border-neon/50 transition">
+                                                            <h4 className="text-xl font-bold text-accent mb-4">{modeStats.mode}</h4>
+                                                            <div className="space-y-3">
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-muted">Total Games</span>
+                                                                    <span className="font-bold text-white">{modeStats.totalGames}</span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-muted">Wins</span>
+                                                                    <span className="font-bold text-green-400">{modeStats.wins}</span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-muted">Losses</span>
+                                                                    <span className="font-bold text-red-400">{modeStats.losses}</span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-muted">Win Rate</span>
+                                                                    <span className="font-bold text-neon">{modeStats.winRate.toFixed(1)}%</span>
+                                                                </div>
+                                                                <div className="mt-3 h-2 bg-navy rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className="h-full bg-gradient-to-r from-green-400 to-neon transition-all duration-500"
+                                                                        style={{ width: `${modeStats.winRate}%` }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-center text-muted py-8">Loading stats...</div>
+                                            )}
+                                        </div>
+
+                                        {/* Frequent Opponents */}
+                                        <div>
+                                            <h3 className="text-2xl font-bold text-neon mb-4">🎯 Frequent Opponents</h3>
+                                            {frequentOpponents.length > 0 ? (
+                                                <div className="space-y-3">
+                                                    {frequentOpponents.map((opponent, index) => (
+                                                        <div
+                                                            key={opponent.username}
+                                                            className="flex items-center justify-between p-4 bg-navy/50 border border-accent/30 rounded-lg hover:border-neon/50 transition"
+                                                        >
+                                                            <div className="flex items-center gap-4">
+                                                                <div className="w-12 h-12 rounded-full bg-accent/20 border-2 border-accent flex items-center justify-center font-bold text-xl text-neon">
+                                                                    #{index + 1}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-bold text-accent text-lg">{opponent.username}</div>
+                                                                    <div className="text-sm text-muted">
+                                                                        {opponent.totalGames} {opponent.totalGames === 1 ? 'match' : 'matches'}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className="font-bold text-lg text-neon mb-1">
+                                                                    {opponent.winRate.toFixed(1)}% WR
+                                                                </div>
+                                                                <div className="text-sm text-muted">
+                                                                    <span className="text-green-400">{opponent.wins}W</span>
+                                                                    {' - '}
+                                                                    <span className="text-red-400">{opponent.losses}L</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-center text-muted py-8">
+                                                    No opponents yet. Start playing to see your most frequent rivals!
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Rank Progression */}
+                                        <div>
+                                            <h3 className="text-2xl font-bold text-neon mb-4">📈 Rank Progression</h3>
+                                            {rankHistory.length > 0 ? (
+                                                <div className="space-y-2">
+                                                    <div className="text-sm text-muted mb-3">
+                                                        Showing last {Math.min(rankHistory.length, 10)} ranked matches
+                                                    </div>
+                                                    {rankHistory.slice(-10).reverse().map((point, index) => (
+                                                        <div
+                                                            key={index}
+                                                            className="flex items-center justify-between p-3 bg-navy/50 border border-accent/30 rounded-lg hover:border-neon/50 transition"
+                                                        >
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xl ${
+                                                                    point.change >= 0
+                                                                        ? 'bg-green-500/20 border border-green-500/50'
+                                                                        : 'bg-red-500/20 border border-red-500/50'
+                                                                }`}>
+                                                                    {point.change >= 0 ? '↑' : '↓'}
+                                                                </div>
+                                                                <div>
+                                                                    <div className="font-semibold text-accent">{point.rank}</div>
+                                                                    <div className="text-xs text-muted">
+                                                                        {new Date(point.timestamp).toLocaleDateString()}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className="font-bold text-lg text-white">
+                                                                    {point.rpBefore} → {point.rpAfter}
+                                                                </div>
+                                                                <div className={`text-sm font-semibold ${
+                                                                    point.change >= 0 ? 'text-green-400' : 'text-red-400'
+                                                                }`}>
+                                                                    {point.change >= 0 ? '+' : ''}{point.change} RP
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div className="text-center text-muted py-8">
+                                                    No ranked matches yet. Play ranked games to track your progression!
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}

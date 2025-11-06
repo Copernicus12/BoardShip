@@ -147,4 +147,171 @@ public class UserController {
             int bestStreak,
             RankingUtil.RankInfo rankInfo
     ) {}
+
+    @GetMapping("/stats/by-mode")
+    public ResponseEntity<StatsByModeResponse> getStatsByMode(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+
+        List<Match> allMatches = matchRepository.findByPlayerIdOrderByPlayedAtDesc(user.getId());
+
+        var rankedStats = calculateModeStats(allMatches, "Ranked");
+        var classicStats = calculateModeStats(allMatches, "Classic");
+        var speedStats = calculateModeStats(allMatches, "Speed");
+
+        return ResponseEntity.ok(new StatsByModeResponse(rankedStats, classicStats, speedStats));
+    }
+
+    private ModeStats calculateModeStats(List<Match> allMatches, String mode) {
+        var modeMatches = allMatches.stream()
+                .filter(m -> mode.equalsIgnoreCase(m.getMode()))
+                .toList();
+
+        int total = modeMatches.size();
+        int wins = (int) modeMatches.stream()
+                .filter(m -> "won".equalsIgnoreCase(m.getResult()))
+                .count();
+        int losses = (int) modeMatches.stream()
+                .filter(m -> "lost".equalsIgnoreCase(m.getResult()))
+                .count();
+        double winRate = total > 0 ? (double) wins / total * 100 : 0;
+
+        return new ModeStats(mode, total, wins, losses, Math.round(winRate * 10) / 10.0);
+    }
+
+    @GetMapping("/opponents/frequent")
+    public ResponseEntity<List<FrequentOpponent>> getFrequentOpponents(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+
+        List<Match> allMatches = matchRepository.findByPlayerIdOrderByPlayedAtDesc(user.getId());
+
+        // Group by opponent and count
+        var opponentStats = new java.util.HashMap<String, OpponentData>();
+        for (Match match : allMatches) {
+            String opponent = match.getOpponentUsername();
+            if (opponent != null) {
+                opponentStats.putIfAbsent(opponent, new OpponentData());
+                OpponentData data = opponentStats.get(opponent);
+                data.totalGames++;
+                if ("won".equalsIgnoreCase(match.getResult())) {
+                    data.wins++;
+                } else if ("lost".equalsIgnoreCase(match.getResult())) {
+                    data.losses++;
+                }
+            }
+        }
+
+        // Convert to list and sort by total games
+        var frequentOpponents = opponentStats.entrySet().stream()
+                .map(entry -> new FrequentOpponent(
+                        entry.getKey(),
+                        entry.getValue().totalGames,
+                        entry.getValue().wins,
+                        entry.getValue().losses,
+                        entry.getValue().totalGames > 0
+                            ? Math.round((double) entry.getValue().wins / entry.getValue().totalGames * 100 * 10) / 10.0
+                            : 0
+                ))
+                .sorted((a, b) -> Integer.compare(b.totalGames(), a.totalGames()))
+                .limit(5)
+                .toList();
+
+        return ResponseEntity.ok(frequentOpponents);
+    }
+
+    @GetMapping("/rank-history")
+    public ResponseEntity<List<RankProgressPoint>> getRankHistory(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String email = authentication.getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+
+        // Get all ranked matches
+        List<Match> rankedMatches = matchRepository.findByPlayerIdOrderByPlayedAtDesc(user.getId())
+                .stream()
+                .filter(m -> "Ranked".equalsIgnoreCase(m.getMode()))
+                .sorted((a, b) -> a.getPlayedAt().compareTo(b.getPlayedAt())) // Ascending order
+                .toList();
+
+        // Calculate RP progression
+        var history = new java.util.ArrayList<RankProgressPoint>();
+        int currentRP = user.getRankingPoints() != null ? user.getRankingPoints() : 0;
+
+        // Work backwards to calculate historical RP
+        for (int i = rankedMatches.size() - 1; i >= 0; i--) {
+            Match match = rankedMatches.get(i);
+            if (i == rankedMatches.size() - 1) {
+                // First match - subtract all subsequent changes
+                int totalChange = rankedMatches.stream()
+                        .skip(i + 1)
+                        .mapToInt(m -> m.getPointsChange() != null ? m.getPointsChange() : 0)
+                        .sum();
+                currentRP = currentRP - totalChange;
+            }
+
+            int rpBefore = currentRP;
+            int change = match.getPointsChange() != null ? match.getPointsChange() : 0;
+            currentRP += change;
+
+            history.add(new RankProgressPoint(
+                    match.getPlayedAt(),
+                    rpBefore,
+                    currentRP,
+                    change,
+                    RankingUtil.getRankInfo(currentRP).getRank()
+            ));
+        }
+
+        return ResponseEntity.ok(history);
+    }
+
+    private static class OpponentData {
+        int totalGames = 0;
+        int wins = 0;
+        int losses = 0;
+    }
+
+    public record StatsByModeResponse(
+            ModeStats ranked,
+            ModeStats classic,
+            ModeStats speed
+    ) {}
+
+    public record ModeStats(
+            String mode,
+            int totalGames,
+            int wins,
+            int losses,
+            double winRate
+    ) {}
+
+    public record FrequentOpponent(
+            String username,
+            int totalGames,
+            int wins,
+            int losses,
+            double winRate
+    ) {}
+
+    public record RankProgressPoint(
+            java.time.Instant timestamp,
+            int rpBefore,
+            int rpAfter,
+            int change,
+            String rank
+    ) {}
 }
