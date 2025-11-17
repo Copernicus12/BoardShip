@@ -25,10 +25,9 @@ const WS_ENDPOINT = import.meta.env.VITE_WS_URL ?? '/ws';
 export default function Game() {
     const { roomId } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, fetchMe } = useAuth();
     const [isHost, setIsHost] = useState(false);
     const isHostRef = useRef(false);
-    const hostLeaveIntentRef = useRef(false);
     const lobbyDeletedRef = useRef(false);
     const [gamePhase, setGamePhase] = useState<GamePhase>('waiting');
     const [isMyTurn, setIsMyTurn] = useState(false);
@@ -36,6 +35,7 @@ export default function Game() {
     const [myShips, setMyShips] = useState<PlacedShip[]>([]);
     const [opponentReady, setOpponentReady] = useState(false);
     const [myAttacks, setMyAttacks] = useState<Array<{row: number, col: number, isHit: boolean}>>([]);
+    const [pendingAttacks, setPendingAttacks] = useState<Array<{row: number, col: number}>>([]);
     const [opponentAttacks, setOpponentAttacks] = useState<Array<{row: number, col: number, isHit: boolean}>>([]);
     const [winner, setWinner] = useState<string | null>(null);
     const [winReason, setWinReason] = useState<string | null>(null);
@@ -45,6 +45,12 @@ export default function Game() {
     const [turnTimeRemaining, setTurnTimeRemaining] = useState<number>(0);
     const [rpChange, setRpChange] = useState<number | null>(null);
     const stompClientRef = useRef<StompClient | null>(null);
+    const gamePhaseRef = useRef<GamePhase>('waiting');
+
+    // Keep gamePhaseRef in sync with gamePhase
+    useEffect(() => {
+        gamePhaseRef.current = gamePhase;
+    }, [gamePhase]);
 
     const deleteLobbyIfHost = useCallback(async () => {
         if (!isHostRef.current || !roomId || lobbyDeletedRef.current) {
@@ -64,6 +70,7 @@ export default function Game() {
         if (!roomId) return;
 
         let mounted = true;
+        let gameFinished = false;
 
         const load = async () => {
             try {
@@ -96,7 +103,51 @@ export default function Game() {
                             const isPlayer1 = user && gameState.player1Id === user.id;
                             const isPlayer2 = user && gameState.player2Id === user.id;
 
-                            if (isPlayer1 && gameState.player1Ships && gameState.player1Ready) {
+                            // Check if game is finished
+                            if (gameState.gamePhase === 'finished') {
+                                gameFinished = true;
+                                console.log('Game is finished, staying on game over screen');
+                                setGamePhase('finished');
+                                setWinner(gameState.winner);
+                                setIsMyTurn(false);
+
+                                // Restore win reason and game over message
+                                if (gameState.winReason) {
+                                    setWinReason(gameState.winReason);
+                                    console.log('Restored win reason:', gameState.winReason);
+                                }
+                                if (gameState.gameOverMessage) {
+                                    setGameOverMessage(gameState.gameOverMessage);
+                                    console.log('Restored game over message:', gameState.gameOverMessage);
+                                }
+
+                                // Restore RP change for ranked games
+                                if (gameState.gameMode === 'ranked') {
+                                    if (gameState.winner === user?.id && gameState.winnerRpChange !== undefined) {
+                                        setRpChange(gameState.winnerRpChange);
+                                        console.log('Restored winner RP change:', gameState.winnerRpChange);
+                                    } else if (gameState.loser === user?.id && gameState.loserRpChange !== undefined) {
+                                        setRpChange(gameState.loserRpChange);
+                                        console.log('Restored loser RP change:', gameState.loserRpChange);
+                                    }
+                                }
+
+                                // Restore all game state for the finished screen
+                                if (isPlayer1) {
+                                    setMyShips(gameState.player1Ships || []);
+                                    setMyAttacks(gameState.player1Attacks || []);
+                                    setOpponentAttacks(gameState.player2Attacks || []);
+                                } else if (isPlayer2) {
+                                    setMyShips(gameState.player2Ships || []);
+                                    setMyAttacks(gameState.player2Attacks || []);
+                                    setOpponentAttacks(gameState.player1Attacks || []);
+                                }
+                                setOpponentReady(true);
+                                setOpponentConnected(true);
+                                if (gameState.gameMode) {
+                                    setGameMode(gameState.gameMode);
+                                }
+                            } else if (isPlayer1 && gameState.player1Ships && gameState.player1Ready) {
                                 // Player 1 has already placed ships
                                 console.log('Restoring player 1 ships from database');
                                 setMyShips(gameState.player1Ships);
@@ -199,19 +250,81 @@ export default function Game() {
                 }
             } catch (e) {
                 console.warn('Lobby not found or error', e);
-                navigate('/lobby');
+                // Only redirect if game is not finished
+                // If game is finished, try to load game state even if lobby doesn't exist
+                try {
+                    const gameStateRes = await api.get(`/api/game-state/${roomId}`);
+                    const gameState = gameStateRes.data;
+                    if (gameState && gameState.gamePhase === 'finished') {
+                        console.log('Lobby deleted but game finished, loading game over screen');
+                        gameFinished = true;
+                        setGamePhase('finished');
+                        setWinner(gameState.winner);
+                        setIsMyTurn(false);
+
+                        // Restore win reason and game over message
+                        if (gameState.winReason) {
+                            setWinReason(gameState.winReason);
+                            console.log('Restored win reason:', gameState.winReason);
+                        }
+                        if (gameState.gameOverMessage) {
+                            setGameOverMessage(gameState.gameOverMessage);
+                            console.log('Restored game over message:', gameState.gameOverMessage);
+                        }
+
+                        // Restore RP change for ranked games
+                        if (gameState.gameMode === 'ranked') {
+                            if (gameState.winner === user?.id && gameState.winnerRpChange !== undefined) {
+                                setRpChange(gameState.winnerRpChange);
+                                console.log('Restored winner RP change:', gameState.winnerRpChange);
+                            } else if (gameState.loser === user?.id && gameState.loserRpChange !== undefined) {
+                                setRpChange(gameState.loserRpChange);
+                                console.log('Restored loser RP change:', gameState.loserRpChange);
+                            }
+                        }
+
+                        const isPlayer1 = user && gameState.player1Id === user.id;
+                        const isPlayer2 = user && gameState.player2Id === user.id;
+                        if (isPlayer1) {
+                            setMyShips(gameState.player1Ships || []);
+                            setMyAttacks(gameState.player1Attacks || []);
+                            setOpponentAttacks(gameState.player2Attacks || []);
+                        } else if (isPlayer2) {
+                            setMyShips(gameState.player2Ships || []);
+                            setMyAttacks(gameState.player2Attacks || []);
+                            setOpponentAttacks(gameState.player1Attacks || []);
+                        }
+                        setOpponentReady(true);
+                        setOpponentConnected(true);
+                        if (gameState.gameMode) {
+                            setGameMode(gameState.gameMode);
+                        }
+                    } else {
+                        navigate('/lobby');
+                    }
+                } catch (gameStateError) {
+                    console.warn('No game state found either, redirecting to lobby');
+                    navigate('/lobby');
+                }
             }
         };
 
         load();
 
         // WebSocket connection for real-time updates
+        // Don't connect if game is already finished
         const client = new StompClient({
             webSocketFactory: () => new SockJS(WS_ENDPOINT) as unknown as WebSocket,
             reconnectDelay: 3000,
         });
 
         client.onConnect = () => {
+            // If game finished during load, disconnect immediately
+            if (gameFinished) {
+                console.log('🚫 Game is finished, not subscribing to WebSocket updates');
+                client.deactivate();
+                return;
+            }
             console.log('Game WebSocket connected');
 
             // Subscribe to game-specific updates
@@ -219,6 +332,12 @@ export default function Game() {
                 try {
                     const payload = JSON.parse(msg.body);
                     console.log('Game update:', payload);
+
+                    // Ignore all messages except GAME_OVER if game is already finished
+                    if (gamePhaseRef.current === 'finished' && payload.type !== 'GAME_OVER') {
+                        console.log('🚫 Ignoring message - game already finished:', payload.type);
+                        return;
+                    }
 
                     if (payload.type === 'PLAYER_JOINED') {
                         console.log('🎮 Player joined the game');
@@ -252,6 +371,8 @@ export default function Game() {
                         if (payload.playerId === user?.id) {
                             // My attack on enemy board
                             console.log(payload.isHit ? '🎯 I HIT!' : '💧 I MISSED');
+                            // Remove from pending if present
+                            setPendingAttacks(prev => prev.filter(p => !(p.row === attack.row && p.col === attack.col)));
                             setMyAttacks(prev => [...prev, attack]);
                         } else {
                             // Opponent's attack on my board
@@ -261,6 +382,10 @@ export default function Game() {
                     } else if (payload.type === 'ATTACK_ERROR') {
                         // Handle attack error (e.g., cell already attacked)
                         console.warn('⚠️ Attack error:', payload.message, { row: payload.row, col: payload.col });
+                        // If we had this attack pending, remove it so the user can try another cell
+                        try {
+                            setPendingAttacks(prev => prev.filter(p => !(p.row === payload.row && p.col === payload.col)));
+                        } catch (e) {}
                         // Optionally show a toast notification to the user
                         // For now, just log it - the frontend check should prevent this
                     } else if (payload.type === 'TURN_CHANGE') {
@@ -304,11 +429,37 @@ export default function Game() {
                         }
 
                         // Save RP change for ranked mode
-                        if (payload.winner === user?.id && payload.winnerRpChange) {
+                        if (payload.winner === user?.id && payload.winnerRpChange !== undefined) {
+                            console.log('Setting winner RP change:', payload.winnerRpChange);
                             setRpChange(payload.winnerRpChange);
-                        } else if (payload.loser === user?.id && payload.loserRpChange) {
+                            // Refresh authenticated user and notify profile to reload
+                            try {
+                                fetchMe?.().catch(() => {});
+                            } catch (e) {
+                                // ignore
+                            }
+                            try { localStorage.setItem('profile:refresh', String(Date.now())); } catch (e) {}
+                        } else if (payload.loser === user?.id && payload.loserRpChange !== undefined) {
+                            console.log('Setting loser RP change:', payload.loserRpChange);
                             setRpChange(payload.loserRpChange);
+                            // Refresh authenticated user and notify profile to reload
+                            try {
+                                fetchMe?.().catch(() => {});
+                            } catch (e) {
+                                // ignore
+                            }
+                            try { localStorage.setItem('profile:refresh', String(Date.now())); } catch (e) {}
                         }
+
+                        // Disconnect WebSocket after a short delay to ensure this message is fully processed
+                        setTimeout(() => {
+                            try {
+                                console.log('🔌 Disconnecting WebSocket after game over');
+                                stompClientRef.current?.deactivate();
+                            } catch (e) {
+                                console.error('Error disconnecting WebSocket:', e);
+                            }
+                        }, 500);
                     }
                 } catch (e) {
                     console.error('Invalid game update', e);
@@ -319,6 +470,13 @@ export default function Game() {
             client.subscribe('/topic/lobbies', (msg: IMessage) => {
                 try {
                     const payload = JSON.parse(msg.body);
+
+                    // Ignore lobby updates if game is finished
+                    if (gamePhaseRef.current === 'finished') {
+                        console.log('🚫 Ignoring lobby update - game already finished');
+                        return;
+                    }
+
                     if (payload.id === roomId && payload.currentPlayers >= 2) {
                         setOpponentConnected(true);
                         setGamePhase(prev => (prev === 'waiting' ? 'placement' : prev));
@@ -329,13 +487,17 @@ export default function Game() {
             });
         };
 
-        client.activate();
-        stompClientRef.current = client;
+        // Only activate WebSocket if game is not finished
+        if (!gameFinished) {
+            client.activate();
+            stompClientRef.current = client;
+        } else {
+            console.log('🚫 Skipping WebSocket activation - game already finished');
+        }
 
         return () => {
             mounted = false;
             console.log('Game: unmount cleanup', { isHost: isHostRef.current, roomId });
-
 
             try {
                 client?.deactivate();
@@ -343,9 +505,8 @@ export default function Game() {
                 console.error('Error deactivating WebSocket', e);
             }
 
-            if (hostLeaveIntentRef.current) {
-                void deleteLobbyIfHost();
-            }
+            // Don't delete lobby on cleanup - backend handles this
+            // Deleting here causes navigation issues and unwanted re-renders
         };
     }, [roomId, user, navigate, deleteLobbyIfHost]);
 
@@ -383,30 +544,27 @@ export default function Game() {
         return () => clearInterval(interval);
     }, [gameMode, isMyTurn, gamePhase, turnTimeLimit, roomId, user]);
 
-    const handleLeaveToLobby = useCallback(async () => {
-        hostLeaveIntentRef.current = true;
+    const handleLeaveToLobby = useCallback(() => {
+        console.log('🚪 Leaving game to lobby');
 
-        // Send leave message to backend
-        if (stompClientRef.current && roomId && user) {
-            try {
-                stompClientRef.current.publish({
-                    destination: `/app/game/${roomId}/leave`,
-                    body: JSON.stringify({
-                        playerId: user.id
-                    })
-                });
-                console.log('Sent leave message to backend');
-            } catch (error) {
-                console.error('Failed to send leave message:', error);
-            }
-        }
+        // Clear pending attacks
+        setPendingAttacks([]);
 
+        // Disconnect WebSocket immediately
         try {
-            await deleteLobbyIfHost();
-        } finally {
-            navigate('/lobby');
+            if (stompClientRef.current) {
+                console.log('🔌 Deactivating WebSocket connection');
+                stompClientRef.current.deactivate();
+                stompClientRef.current = null;
+            }
+        } catch (e) {
+            console.error('Error deactivating WebSocket during leave:', e);
         }
-    }, [deleteLobbyIfHost, navigate, roomId, user, stompClientRef]);
+
+        // Navigate to lobby immediately - don't try to clean up backend state
+        // Backend will handle cleanup when players disconnect
+        navigate('/lobby', { replace: true });
+    }, [navigate]);
 
 
     const handleShipPlacementComplete = (ships: PlacedShip[]) => {
@@ -434,13 +592,20 @@ export default function Game() {
         }
 
         // Check if this cell has already been attacked
-        const alreadyAttacked = myAttacks.some(attack => attack.row === row && attack.col === col);
+        const alreadyAttacked = myAttacks.some(attack => attack.row === row && attack.col === col) || pendingAttacks.some(attack => attack.row === row && attack.col === col);
         if (alreadyAttacked) {
-            console.log('❌ Cell already attacked', { row, col });
+            console.log('❌ Cell already attacked or pending', { row, col });
             return;
         }
 
         console.log(`🎯 Attacking cell: [${row}, ${col}]`);
+
+        // Mark as pending locally to avoid duplicate sends while waiting for server response
+        setPendingAttacks(prev => [...prev, { row, col }]);
+        // Safety: remove pending entry if server doesn't respond in reasonable time
+        setTimeout(() => {
+            setPendingAttacks(prev => prev.filter(p => !(p.row === row && p.col === col)));
+        }, 8000);
 
         // Send attack to server
         if (stompClientRef.current && roomId) {
@@ -758,7 +923,7 @@ export default function Game() {
                             </p>
 
                             {/* RP Change for Ranked Mode */}
-                            {gameMode === 'ranked' && rpChange !== null && (
+                            {gameMode.toLowerCase() === 'ranked' && rpChange !== null && (
                                 <div className={`inline-block mb-6 sm:mb-8 px-6 sm:px-10 py-4 sm:py-6 rounded-xl border-2 shadow-xl transition-all hover:scale-105 ${
                                     rpChange > 0 
                                         ? 'bg-green-500/20 border-green-500 shadow-green-500/30' 
@@ -803,18 +968,12 @@ export default function Game() {
                             </div>
 
                             {/* Action buttons */}
-                            <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4">
+                            <div className="flex justify-center">
                                 <button
                                     onClick={handleLeaveToLobby}
                                     className="px-6 sm:px-8 py-3 sm:py-4 bg-cyan/20 hover:bg-cyan/30 text-cyan rounded-xl border-2 border-cyan/50 hover:border-cyan transition-all duration-300 text-base sm:text-lg font-bold shadow-lg hover:shadow-cyan/20 hover:scale-105"
                                 >
                                     Return to Lobby
-                                </button>
-                                <button
-                                    onClick={() => window.location.reload()}
-                                    className="px-6 sm:px-8 py-3 sm:py-4 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 rounded-xl border-2 border-purple-500/50 hover:border-purple-500 transition-all duration-300 text-base sm:text-lg font-bold shadow-lg hover:shadow-purple-500/20 hover:scale-105"
-                                >
-                                    Play Again
                                 </button>
                             </div>
                         </div>
@@ -869,6 +1028,7 @@ export default function Game() {
                                                 hits: 0
                                             }))}
                                             attacks={opponentAttacks}
+                                            pendingAttacks={pendingAttacks}
                                         />
                                     </div>
                                 </div>
@@ -943,6 +1103,7 @@ export default function Game() {
                                             isClickable={isMyTurn}
                                             initialShips={[]}
                                             attacks={myAttacks}
+                                            pendingAttacks={pendingAttacks}
                                         />
                                     </div>
                                 </div>

@@ -79,40 +79,50 @@ export default function Profile() {
     const [matchFilter, setMatchFilter] = useState<'all' | 'ranked' | 'classic' | 'speed'>('all');
     const [loading, setLoading] = useState(true);
 
+    // Extracted fetch function so other pages can request a refresh via localStorage event
+    const fetchProfileData = async () => {
+        try {
+            setLoading(true);
+            const [statsResponse, matchesResponse, statsByModeResponse, opponentsResponse, rankHistoryResponse] = await Promise.all([
+                api.get('/api/users/stats'),
+                api.get('/api/matches/history'),
+                api.get('/api/users/stats/by-mode'),
+                api.get('/api/users/opponents/frequent'),
+                api.get('/api/users/rank-history')
+            ]);
+            setStats(statsResponse.data);
+
+            // Ensure matches is always an array
+            const matchesData = matchesResponse.data;
+            setMatches(Array.isArray(matchesData) ? matchesData : []);
+
+            // Set new data
+            setStatsByMode(statsByModeResponse.data);
+            setFrequentOpponents(Array.isArray(opponentsResponse.data) ? opponentsResponse.data : []);
+            setRankHistory(Array.isArray(rankHistoryResponse.data) ? rankHistoryResponse.data : []);
+        } catch (error) {
+            console.error('Failed to fetch profile data:', error);
+            setMatches([]); // Set empty array on error
+            setFrequentOpponents([]);
+            setRankHistory([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                const [statsResponse, matchesResponse, statsByModeResponse, opponentsResponse, rankHistoryResponse] = await Promise.all([
-                    api.get('/api/users/stats'),
-                    api.get('/api/matches/history'),
-                    api.get('/api/users/stats/by-mode'),
-                    api.get('/api/users/opponents/frequent'),
-                    api.get('/api/users/rank-history')
-                ]);
-                setStats(statsResponse.data);
+        if (user) {
+            void fetchProfileData();
+        }
 
-                // Ensure matches is always an array
-                const matchesData = matchesResponse.data;
-                setMatches(Array.isArray(matchesData) ? matchesData : []);
-
-                // Set new data
-                setStatsByMode(statsByModeResponse.data);
-                setFrequentOpponents(Array.isArray(opponentsResponse.data) ? opponentsResponse.data : []);
-                setRankHistory(Array.isArray(rankHistoryResponse.data) ? rankHistoryResponse.data : []);
-            } catch (error) {
-                console.error('Failed to fetch profile data:', error);
-                setMatches([]); // Set empty array on error
-                setFrequentOpponents([]);
-                setRankHistory([]);
-            } finally {
-                setLoading(false);
+        // Listen to localStorage 'profile:refresh' events to reload profile after game ends
+        const onStorage = (e: StorageEvent) => {
+            if (e.key === 'profile:refresh') {
+                void fetchProfileData();
             }
         };
-
-        if (user) {
-            fetchData();
-        }
+        window.addEventListener('storage', onStorage);
+        return () => window.removeEventListener('storage', onStorage);
     }, [user]);
 
     // Calculate achievements based on stats
@@ -143,116 +153,145 @@ export default function Profile() {
 
     return (
         <PageContainer>
-            <div className="max-w-6xl mx-auto">
+            <div className="max-w-7xl mx-auto px-2 lg:px-6">
                 {loading ? (
                     <div className="flex items-center justify-center h-64">
-                        <div className="text-neon text-2xl">Loading...</div>
+                        <div className="text-neon text-xl lg:text-2xl">Loading...</div>
                     </div>
                 ) : (
                     <>
-                        {/* Profile Header */}
-                        <div className="bg-card border border-accent rounded-xl p-8 mb-6">
-                            <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-6">
-                                    <div className="relative">
+                        {/* Profile Header - Responsive */}
+                        <div className="bg-card/30 backdrop-blur-xl border border-accent/30 rounded-lg lg:rounded-2xl p-2 lg:p-8 mb-2 lg:mb-6 shadow-xl relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-br from-neon/5 to-accent/5"></div>
+
+                            <div className="relative flex items-center lg:items-start justify-between gap-2 lg:gap-6">
+                                <div className="flex items-center gap-2 lg:gap-6 flex-1 min-w-0">
+                                    {/* Avatar - Small on mobile, large on desktop */}
+                                    <div className="relative flex-shrink-0">
+                                        <div className="hidden lg:block absolute -inset-1 bg-gradient-to-r from-neon to-accent rounded-full blur opacity-75"></div>
                                         <img
-                                            src={`https://ui-avatars.com/api/?name=${user?.username || 'User'}&background=0b1220&color=00b4d8&size=128`}
+                                            src={`https://ui-avatars.com/api/?name=${user?.username || 'User'}&background=0b1220&color=00b4d8&size=256&bold=true`}
                                             alt="avatar"
-                                            className="w-32 h-32 rounded-full border-4 border-neon shadow-glow"
+                                            className="relative w-12 lg:w-32 h-12 lg:h-32 rounded-full border-2 lg:border-4 border-neon shadow-lg lg:shadow-2xl lg:shadow-neon/50"
                                         />
                                     </div>
-                                    <div>
-                                        <h1 className="text-4xl font-bold text-neon mb-2">{user?.username || 'Guest'}</h1>
-                                        <p className="text-muted mb-3">{user?.email || 'No email provided'}</p>
+
+                                    {/* User Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <h1 className="text-sm lg:text-4xl font-black text-neon lg:text-transparent lg:bg-clip-text lg:bg-gradient-to-r lg:from-neon lg:via-cyan lg:to-accent mb-0.5 lg:mb-2 truncate">
+                                            {user?.username || 'Guest'}
+                                        </h1>
+                                        <p className="hidden lg:block text-muted mb-3 truncate">{user?.email || 'No email provided'}</p>
                                         {stats?.rankInfo && (
-                                            <div className="flex gap-3">
-                                                <span className="px-4 py-1 bg-neon/20 border border-neon rounded-full text-neon font-semibold text-sm">
-                                                    {stats.rankInfo.rank}
+                                            <div className="flex gap-1 lg:gap-3 flex-wrap">
+                                                <span className="px-1.5 lg:px-4 py-0.5 lg:py-1 bg-neon/20 border lg:border-2 border-neon rounded lg:rounded-full text-neon font-bold text-xs lg:text-sm">
+                                                    <span className="hidden lg:inline">{stats.rankInfo.icon} </span>{stats.rankInfo.rank}
                                                 </span>
-                                                <span className="px-4 py-1 bg-accent/20 border border-accent rounded-full text-accent font-semibold text-sm">
-                                                    {stats.rankInfo.currentRP} RP
+                                                <span className="px-1.5 lg:px-4 py-0.5 lg:py-1 bg-accent/20 border lg:border-2 border-accent rounded lg:rounded-full text-accent font-bold text-xs lg:text-sm">
+                                                    <span className="hidden lg:inline">💎 </span>{stats.rankInfo.currentRP} RP
                                                 </span>
                                             </div>
                                         )}
                                     </div>
                                 </div>
+
+                                {/* Logout Button */}
                                 <button
                                     onClick={logout}
-                                    className="px-4 py-2 bg-red-500/20 border border-red-500/50 text-red-400 rounded-lg hover:bg-red-500/30 transition"
+                                    className="flex-shrink-0 px-2 lg:px-6 py-1 lg:py-3 bg-red-500/20 border lg:border-2 border-red-500/50 text-red-400 rounded lg:rounded-xl hover:bg-red-500/30 hover:border-red-500 transition font-bold text-xs lg:text-base"
                                 >
-                                    Logout
+                                    <span className="lg:hidden">Exit</span>
+                                    <span className="hidden lg:inline">Logout</span>
                                 </button>
                             </div>
                         </div>
 
-                        {/* Stats Grid */}
+                        {/* Stats Grid - Responsive */}
                         {stats && (
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                                <div className="bg-card border border-accent rounded-lg p-4 text-center hover:border-neon transition">
-                                    <div className="text-3xl font-bold text-neon mb-1">{stats.totalGames || 0}</div>
-                                    <div className="text-sm text-muted">Total Games</div>
+                            <div className="grid grid-cols-4 gap-1.5 lg:gap-4 mb-2 lg:mb-6">
+                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded lg:rounded-xl p-1.5 lg:p-4 text-center hover:border-neon/50 transition hover:scale-105">
+                                    <div className="hidden lg:block text-sm text-muted mb-1 font-semibold">🎮</div>
+                                    <div className="text-base lg:text-4xl font-black text-neon lg:mb-1">{stats.totalGames || 0}</div>
+                                    <div className="text-xs lg:text-sm text-muted font-semibold">
+                                        <span className="lg:hidden">Games</span>
+                                        <span className="hidden lg:inline">Total Games</span>
+                                    </div>
                                 </div>
-                                <div className="bg-card border border-accent rounded-lg p-4 text-center hover:border-neon transition">
-                                    <div className="text-3xl font-bold text-green-400 mb-1">{(stats.winRate ?? 0).toFixed(1)}%</div>
-                                    <div className="text-sm text-muted">Win Rate</div>
+                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded lg:rounded-xl p-1.5 lg:p-4 text-center hover:border-green-500/50 transition hover:scale-105">
+                                    <div className="hidden lg:block text-sm text-muted mb-1 font-semibold">📈</div>
+                                    <div className="text-base lg:text-4xl font-black text-green-400 lg:mb-1">{(stats.winRate ?? 0).toFixed(0)}<span className="hidden lg:inline">.{((stats.winRate ?? 0) % 1).toFixed(1).substring(2)}</span>%</div>
+                                    <div className="text-xs lg:text-sm text-muted font-semibold">
+                                        <span className="lg:hidden">Win</span>
+                                        <span className="hidden lg:inline">Win Rate</span>
+                                    </div>
                                 </div>
-                                <div className="bg-card border border-accent rounded-lg p-4 text-center hover:border-neon transition">
-                                    <div className="text-3xl font-bold text-neon mb-1">{stats.bestStreak || 0}</div>
-                                    <div className="text-sm text-muted">Best Streak</div>
+                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded lg:rounded-xl p-1.5 lg:p-4 text-center hover:border-orange-500/50 transition hover:scale-105">
+                                    <div className="hidden lg:block text-sm text-muted mb-1 font-semibold">🔥</div>
+                                    <div className="text-base lg:text-4xl font-black text-orange-400 lg:mb-1">{stats.bestStreak || 0}</div>
+                                    <div className="text-xs lg:text-sm text-muted font-semibold">
+                                        <span className="lg:hidden">Streak</span>
+                                        <span className="hidden lg:inline">Best Streak</span>
+                                    </div>
                                 </div>
-                                <div className="bg-card border border-accent rounded-lg p-4 text-center hover:border-neon transition">
-                                    <div className="text-3xl font-bold text-accent mb-1">{stats.wins || 0}</div>
-                                    <div className="text-sm text-muted">Wins</div>
+                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded lg:rounded-xl p-1.5 lg:p-4 text-center hover:border-accent/50 transition hover:scale-105">
+                                    <div className="hidden lg:block text-sm text-muted mb-1 font-semibold">🏆</div>
+                                    <div className="text-base lg:text-4xl font-black text-accent lg:mb-1">{stats.wins || 0}</div>
+                                    <div className="text-xs lg:text-sm text-muted font-semibold">Wins</div>
                                 </div>
                             </div>
                         )}
 
-                        {/* Tabs - Ultra Compact */}
-                        <div className="bg-card/30 border border-accent/30 rounded-lg overflow-hidden shadow-lg">
+                        {/* Tabs - Responsive: Icons on mobile, Full text on desktop */}
+                        <div className="bg-card/30 backdrop-blur-xl border border-accent/30 rounded-lg lg:rounded-2xl overflow-hidden shadow-xl">
                             <div className="overflow-x-auto scrollbar-hide">
                                 <div className="flex border-b border-accent/30">
                                     <button
                                         onClick={() => setActiveTab('overview')}
-                                        className={`flex-1 min-w-[70px] px-2 py-2 sm:px-4 sm:py-3 font-bold text-xs sm:text-sm transition ${
+                                        className={`flex-1 min-w-[70px] lg:min-w-0 px-2 lg:px-6 py-2 lg:py-4 font-bold text-xs lg:text-base transition ${
                                             activeTab === 'overview'
-                                                ? 'bg-neon/20 text-neon border-b-2 border-neon'
-                                                : 'text-muted hover:text-accent'
+                                                ? 'bg-neon/20 text-neon border-b-2 lg:border-b-4 border-neon'
+                                                : 'text-muted hover:text-accent hover:bg-accent/5'
                                         }`}
                                     >
-                                        📊
+                                        <span className="lg:hidden">📊</span>
+                                        <span className="hidden lg:inline">📊 Overview</span>
                                     </button>
                                     <button
                                         onClick={() => setActiveTab('matches')}
-                                        className={`flex-1 min-w-[70px] px-2 py-2 sm:px-4 sm:py-3 font-bold text-xs sm:text-sm transition ${
+                                        className={`flex-1 min-w-[70px] lg:min-w-0 px-2 lg:px-6 py-2 lg:py-4 font-bold text-xs lg:text-base transition ${
                                             activeTab === 'matches'
-                                                ? 'bg-neon/20 text-neon border-b-2 border-neon'
-                                                : 'text-muted hover:text-accent'
+                                                ? 'bg-neon/20 text-neon border-b-2 lg:border-b-4 border-neon'
+                                                : 'text-muted hover:text-accent hover:bg-accent/5'
                                         }`}
                                     >
-                                        ⚔️
+                                        <span className="lg:hidden">⚔️</span>
+                                        <span className="hidden lg:inline">⚔️ Match History</span>
                                     </button>
                                     <button
                                         onClick={() => setActiveTab('achievements')}
-                                        className={`flex-1 min-w-[70px] px-2 py-2 sm:px-4 sm:py-3 font-bold text-xs sm:text-sm transition ${
+                                        className={`flex-1 min-w-[70px] lg:min-w-0 px-2 lg:px-6 py-2 lg:py-4 font-bold text-xs lg:text-base transition ${
                                             activeTab === 'achievements'
-                                                ? 'bg-neon/20 text-neon border-b-2 border-neon'
-                                                : 'text-muted hover:text-accent'
+                                                ? 'bg-neon/20 text-neon border-b-2 lg:border-b-4 border-neon'
+                                                : 'text-muted hover:text-accent hover:bg-accent/5'
                                         }`}
                                     >
-                                        🏅
+                                        <span className="lg:hidden">🏅</span>
+                                        <span className="hidden lg:inline">🏅 Achievements</span>
                                     </button>
                                     <button
                                         onClick={() => setActiveTab('stats')}
-                                        className={`flex-1 min-w-[70px] px-2 py-2 sm:px-4 sm:py-3 font-bold text-xs sm:text-sm transition ${
+                                        className={`flex-1 min-w-[70px] lg:min-w-0 px-2 lg:px-6 py-2 lg:py-4 font-bold text-xs lg:text-base transition ${
                                             activeTab === 'stats'
-                                                ? 'bg-neon/20 text-neon border-b-2 border-neon'
-                                                : 'text-muted hover:text-accent'
+                                                ? 'bg-neon/20 text-neon border-b-2 lg:border-b-4 border-neon'
+                                                : 'text-muted hover:text-accent hover:bg-accent/5'
                                         }`}
                                     >
-                                        📈
+                                        <span className="lg:hidden">📈</span>
+                                        <span className="hidden lg:inline">📈 Detailed Stats</span>
                                     </button>
                                 </div>
                             </div>
+
 
                             <div className="p-2 sm:p-4 md:p-6">
                                 {activeTab === 'overview' && stats && (

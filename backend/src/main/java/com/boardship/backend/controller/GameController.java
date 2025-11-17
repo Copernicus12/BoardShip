@@ -181,9 +181,15 @@ public class GameController {
         // Initialize room state from database if needed
         ensureRoomStateLoaded(roomId);
 
+        // Check if game is already finished (prevent duplicate processing)
+        if (roomCurrentTurn.get(roomId) == null) {
+            log.warn("Player {} tried to attack but game is already finished in room {}", attackerId, roomId);
+            return;
+        }
+
         // Validate it's this player's turn
         String currentPlayer = roomCurrentTurn.get(roomId);
-        if (currentPlayer == null || !currentPlayer.equals(attackerId)) {
+        if (!currentPlayer.equals(attackerId)) {
             log.warn("Player {} tried to attack but it's not their turn in room {}", attackerId, roomId);
             return;
         }
@@ -305,8 +311,8 @@ public class GameController {
                 log.info("🏆 VICTORY! Player {} has destroyed all of {}'s ships!", attackerId, defenderId);
 
                 // Calculate RP for ranked mode
-                Integer winnerRpChange = null;
-                Integer loserRpChange = null;
+                final Integer winnerRpChange;
+                final Integer loserRpChange;
 
                 if ("ranked".equals(gameMode)) {
                     // Get current RP for both players
@@ -322,6 +328,9 @@ public class GameController {
 
                     log.info("Ranked mode RP changes: winner {} (RP: {}) gets +{}, loser {} (RP: {}) gets {}",
                              attackerId, winnerCurrentRP, winnerRpChange, defenderId, loserCurrentRP, loserRpChange);
+                } else {
+                    winnerRpChange = null;
+                    loserRpChange = null;
                 }
 
                 persistMatchResult(roomId, attackerId, defenderId, winnerRpChange, loserRpChange);
@@ -331,11 +340,26 @@ public class GameController {
                     "winner", attackerId,
                     "loser", defenderId,
                     "message", "All ships destroyed!",
+                    "reason", "all_ships_destroyed",
                     "winnerRpChange", winnerRpChange != null ? winnerRpChange : 0,
                     "loserRpChange", loserRpChange != null ? loserRpChange : 0
                 );
 
                 messagingTemplate.convertAndSend("/topic/game/" + roomId, victoryMessage);
+
+                // Update game state to finished in database (don't delete it!)
+                gameStateRepository.findById(roomId).ifPresent(state -> {
+                    state.setGamePhase("finished");
+                    state.setWinner(attackerId);
+                    state.setLoser(defenderId);
+                    state.setWinReason("all_ships_destroyed");
+                    state.setGameOverMessage("All ships destroyed!");
+                    state.setWinnerRpChange(winnerRpChange);
+                    state.setLoserRpChange(loserRpChange);
+                    state.setUpdatedAt(Instant.now());
+                    gameStateRepository.save(state);
+                    log.info("Saved finished game state to database for room {}", roomId);
+                });
 
                 // Clean up room data from memory
                 roomReadyPlayers.remove(roomId);
@@ -347,9 +371,6 @@ public class GameController {
                 roomGameMode.remove(roomId);
                 roomTurnStartTime.remove(roomId);
 
-                // Clean up from database
-                gameStateRepository.deleteById(roomId);
-                log.info("Cleaned up game state from database for room {}", roomId);
 
                 return; // Game is over, don't process turn changes
             }
@@ -779,10 +800,28 @@ public class GameController {
                 gameState.isPlayer2Ready() &&
                 (gameState.getGamePhase().equals("playing") || gameState.getGamePhase().equals("ready"));
 
+            Integer winnerRpChange = null;
+            Integer loserRpChange = null;
+
             if (gameWasActive) {
                 log.info("Game was active, saving match result for forfeit in room {}", roomId);
                 // Persist the match result (winner by forfeit)
                 persistMatchResultForForfeit(roomId, remainingPlayerId, leavingPlayerId);
+
+                // Calculate RP changes for ranked mode
+                if (gameState != null && "ranked".equals(gameState.getGameMode())) {
+                    User winner = userRepository.findById(remainingPlayerId).orElse(null);
+                    User loser = userRepository.findById(leavingPlayerId).orElse(null);
+
+                    int winnerCurrentRP = winner != null && winner.getRankingPoints() != null ? winner.getRankingPoints() : 0;
+                    int loserCurrentRP = loser != null && loser.getRankingPoints() != null ? loser.getRankingPoints() : 0;
+
+                    winnerRpChange = RankingUtil.calculateRPChange(true, winnerCurrentRP, loserCurrentRP);
+                    loserRpChange = RankingUtil.calculateRPChange(false, loserCurrentRP, winnerCurrentRP);
+
+                    log.info("Forfeit in ranked mode: winner {} gets +{}, loser {} gets {}",
+                             remainingPlayerId, winnerRpChange, leavingPlayerId, loserRpChange);
+                }
             } else {
                 log.info("Game was not fully started yet (both players not ready), not saving match result for room {}", roomId);
             }
@@ -793,10 +832,26 @@ public class GameController {
                 "winner", remainingPlayerId,
                 "loser", leavingPlayerId,
                 "reason", "forfeit",
-                "message", leavingPlayerUsername + " left the game"
+                "message", leavingPlayerUsername + " left the game",
+                "winnerRpChange", winnerRpChange != null ? winnerRpChange : 0,
+                "loserRpChange", loserRpChange != null ? loserRpChange : 0
             );
 
             messagingTemplate.convertAndSend("/topic/game/" + roomId, victoryMessage);
+
+            // Update game state to finished in database (don't delete it!)
+            if (gameState != null) {
+                gameState.setGamePhase("finished");
+                gameState.setWinner(remainingPlayerId);
+                gameState.setLoser(leavingPlayerId);
+                gameState.setWinReason("forfeit");
+                gameState.setGameOverMessage(leavingPlayerUsername + " left the game");
+                gameState.setWinnerRpChange(winnerRpChange);
+                gameState.setLoserRpChange(loserRpChange);
+                gameState.setUpdatedAt(Instant.now());
+                gameStateRepository.save(gameState);
+                log.info("Saved finished game state (forfeit) to database for room {}", roomId);
+            }
         } else {
             // Just notify that player left (no opponent to declare as winner)
             Map<String, Object> leaveMessage = Map.of(
@@ -831,10 +886,7 @@ public class GameController {
             players.remove(leavingPlayerId);
         }
 
-        // Clean up game state from database
-        if (gameStateRepository.existsById(roomId)) {
-            gameStateRepository.deleteById(roomId);
-            log.info("Cleaned up game state from database for room {}", roomId);
-        }
+        // Don't delete game state - it's already saved as finished above if game was active
+        // This allows players to see the game over screen on refresh
     }
 }

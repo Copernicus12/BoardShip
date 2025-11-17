@@ -52,6 +52,14 @@ public class GameState {
     private List<Map<String, Object>> player1Attacks; // Player 1's attacks on Player 2
     private List<Map<String, Object>> player2Attacks; // Player 2's attacks on Player 1
 
+    // Game over information
+    private String winner; // User ID of the winner
+    private String loser; // User ID of the loser
+    private String winReason; // e.g., "all_ships_destroyed", "forfeit", "timeout"
+    private String gameOverMessage; // e.g., "PlayerName left the game"
+    private Integer winnerRpChange; // RP change for the winner (ranked mode)
+    private Integer loserRpChange; // RP change for the loser (ranked mode)
+
     private Instant createdAt;
     private Instant updatedAt;
 }

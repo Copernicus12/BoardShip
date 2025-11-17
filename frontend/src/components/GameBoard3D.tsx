@@ -22,6 +22,7 @@ type BoardProps = {
     initialShips?: Ship[];
     isClickable?: boolean;
     attacks?: Array<{row: number, col: number, isHit: boolean}>;
+    pendingAttacks?: Array<{row: number, col: number}>;
 };
 
 // Individual water cell component
@@ -30,13 +31,15 @@ function WaterCell({
     state,
     onClick,
     isHovered,
-    isClickable = true
+    isClickable = true,
+    isPending = false
 }: {
     position: [number, number, number];
     state: CellState;
     onClick?: () => void;
     isHovered: boolean;
     isClickable?: boolean;
+    isPending?: boolean;
 }) {
     const meshRef = useRef<THREE.Mesh>(null);
 
@@ -46,11 +49,11 @@ function WaterCell({
             case 'miss': return '#4444ff';
             case 'sunk': return '#aa0000';
             case 'ship': return '#555555';
-            default: return isHovered ? '#2a7a9a' : '#1a5a7a';
+            default: return isPending ? '#c28a00' : (isHovered ? '#2a7a9a' : '#1a5a7a');
         }
     };
 
-    const canClick = isClickable && state === 'empty';
+    const canClick = isClickable && state === 'empty' && !isPending;
 
     return (
         <mesh
@@ -234,7 +237,7 @@ function MissMarker({ position }: { position: [number, number, number] }) {
 }
 
 // Main board grid component
-function BoardGrid({ isPlayerBoard, size = 10, onCellClick, initialShips, isClickable = true, attacks = [] }: BoardProps) {
+function BoardGrid({ isPlayerBoard, size = 10, onCellClick, initialShips, isClickable = true, attacks = [], pendingAttacks = [] }: BoardProps) {
     const [hoveredCell] = useState<{ row: number; col: number } | null>(null);
     const [board, setBoard] = useState<CellState[][]>(
         Array(size).fill(null).map(() => Array(size).fill('empty'))
@@ -281,8 +284,9 @@ function BoardGrid({ isPlayerBoard, size = 10, onCellClick, initialShips, isClic
 
         // Prevent clicking on already attacked cells
         const cellState = board[row][col];
-        if (cellState === 'hit' || cellState === 'miss') {
-            console.log('❌ Cell already attacked!', { row, col, state: cellState });
+        const isPending = Array.isArray(pendingAttacks) && pendingAttacks.some(p => p.row === row && p.col === col);
+        if (cellState === 'hit' || cellState === 'miss' || isPending) {
+            console.log('❌ Cell already attacked or pending!', { row, col, state: cellState, isPending });
             return;
         }
 
@@ -300,6 +304,7 @@ function BoardGrid({ isPlayerBoard, size = 10, onCellClick, initialShips, isClic
             const z = row - size / 2 + 0.5;
             const isHovered = hoveredCell?.row === row && hoveredCell?.col === col;
 
+            const isPendingCell = Array.isArray(pendingAttacks) && pendingAttacks.some(p => p.row === row && p.col === col);
             cells.push(
                 <WaterCell
                     key={`${row}-${col}`}
@@ -307,6 +312,7 @@ function BoardGrid({ isPlayerBoard, size = 10, onCellClick, initialShips, isClic
                     state={board[row][col]}
                     isHovered={isHovered}
                     isClickable={isClickable}
+                    isPending={isPendingCell}
                     onClick={() => handleCellClick(row, col)}
                 />
             );
@@ -326,8 +332,11 @@ function BoardGrid({ isPlayerBoard, size = 10, onCellClick, initialShips, isClic
 
     // Render ships (only on player's board)
     const shipElements = isPlayerBoard ? ships.map(ship => {
-        if (ship.positions.length === 0) return null;
+        if (!ship || !ship.positions || ship.positions.length === 0) {
+            return null;
+        }
 
+        // Calculate center position of the ship
         const centerPos = {
             row: ship.positions.reduce((sum, p) => sum + p.row, 0) / ship.positions.length,
             col: ship.positions.reduce((sum, p) => sum + p.col, 0) / ship.positions.length
@@ -377,7 +386,8 @@ export default function GameBoard3D({
     onCellClick,
     initialShips,
     isClickable = true,
-    attacks = []
+    attacks = [],
+    pendingAttacks = []
 }: {
     isPlayerBoard?: boolean;
     boardSize?: number;
@@ -385,6 +395,7 @@ export default function GameBoard3D({
     initialShips?: Ship[];
     isClickable?: boolean;
     attacks?: Array<{row: number, col: number, isHit: boolean}>;
+    pendingAttacks?: Array<{row: number, col: number}>;
 }) {
     return (
         <div className="w-full h-full rounded-lg overflow-hidden">
@@ -397,8 +408,6 @@ export default function GameBoard3D({
                     position={[10, 10, 5]}
                     intensity={1}
                     castShadow
-                    shadow-mapSize-width={2048}
-                    shadow-mapSize-height={2048}
                 />
                 <pointLight position={[-10, 10, -10]} intensity={0.5} color="#4a9aba" />
                 <pointLight position={[10, 5, 10]} intensity={0.3} color="#1a5a7a" />
@@ -421,9 +430,10 @@ export default function GameBoard3D({
                     initialShips={initialShips}
                     isClickable={isClickable}
                     attacks={attacks}
+                    pendingAttacks={pendingAttacks}
                 />
 
-                {/* Camera controls - Enhanced for mobile */}
+                {/* Camera controls - tuned */}
                 <OrbitControls
                     enablePan={true}
                     enableZoom={true}
@@ -434,13 +444,8 @@ export default function GameBoard3D({
                     rotateSpeed={0.8}
                     zoomSpeed={0.8}
                     panSpeed={0.8}
-                    touches={{
-                        ONE: THREE.TOUCH.ROTATE,
-                        TWO: THREE.TOUCH.DOLLY_PAN
-                    }}
                 />
             </Canvas>
         </div>
     );
 }
-
