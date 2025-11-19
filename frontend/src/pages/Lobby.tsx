@@ -236,7 +236,7 @@ export default function Lobby() {
                                                 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
                                             }`}>
                                                 {room.mode === 'speed' && '⚡ Speed'}
-                                                {room.mode === 'ranked' && '🏆 Ranked'}
+                                                {room.mode === 'ranked' && '🏆 Ranked Mode'}
                                                 {room.mode === 'classic' && '⚓ Classic'}
                                                 {!room.mode && '⚓ Classic'}
                                             </span>

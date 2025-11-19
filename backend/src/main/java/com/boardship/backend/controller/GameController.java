@@ -42,8 +42,8 @@ public class GameController {
     // Track all players in a room: roomId -> List<playerId>
     private final Map<String, java.util.List<String>> roomPlayers = new ConcurrentHashMap<>();
 
-    // Track attacked cells per room: roomId -> Set of "row,col" strings
-    private final Map<String, java.util.Set<String>> roomAttackedCells = new ConcurrentHashMap<>();
+    // Track attacks per room per player: roomId -> playerId -> Set of "row,col" strings
+    private final Map<String, Map<String, java.util.Set<String>>> roomAttacksPerPlayer = new ConcurrentHashMap<>();
 
     // Track hit cells per room per player: roomId -> playerId -> Set of "row,col" strings
     private final Map<String, Map<String, java.util.Set<String>>> roomPlayerHits = new ConcurrentHashMap<>();
@@ -214,27 +214,65 @@ public class GameController {
         int col = ((Number) payload.get("col")).intValue();
 
         // Initialize attacked cells tracking for this room
-        roomAttackedCells.putIfAbsent(roomId, java.util.concurrent.ConcurrentHashMap.newKeySet());
-        java.util.Set<String> attackedCells = roomAttackedCells.get(roomId);
+        roomAttacksPerPlayer.putIfAbsent(roomId, new ConcurrentHashMap<>());
+        Map<String, java.util.Set<String>> attacksByPlayer = roomAttacksPerPlayer.get(roomId);
+        attacksByPlayer.putIfAbsent(attackerId, java.util.concurrent.ConcurrentHashMap.newKeySet());
+        java.util.Set<String> attackerAttacks = attacksByPlayer.get(attackerId);
 
         // Check if this cell was already attacked
         String cellKey = row + "," + col;
-        if (attackedCells.contains(cellKey)) {
+        // Only consider whether THIS attacker already attacked this cell (each player has their own attack board)
+        if (attackerAttacks.contains(cellKey)) {
             log.warn("Player {} tried to attack already attacked cell [{}, {}] in room {}",
                      attackerId, row, col, roomId);
 
-            Map<String, Object> errorMessage = Map.of(
-                "type", "ATTACK_ERROR",
-                "message", "This cell was already attacked!",
-                "row", row,
-                "col", col
-            );
+            // Try to find authoritative info in persisted GameState (if available)
+            GameState gs = gameStateRepository.findById(roomId).orElse(null);
+            String previousAttacker = null;
+            Boolean previousIsHit = null;
+            if (gs != null) {
+                if (gs.getPlayer1Attacks() != null) {
+                    for (var a : gs.getPlayer1Attacks()) {
+                        int ar = ((Number) a.get("row")).intValue();
+                        int ac = ((Number) a.get("col")).intValue();
+                        if (ar == row && ac == col) {
+                            previousAttacker = gs.getPlayer1Id();
+                            previousIsHit = (Boolean) a.get("isHit");
+                            break;
+                        }
+                    }
+                }
+                if (previousAttacker == null && gs.getPlayer2Attacks() != null) {
+                    for (var a : gs.getPlayer2Attacks()) {
+                        int ar = ((Number) a.get("row")).intValue();
+                        int ac = ((Number) a.get("col")).intValue();
+                        if (ar == row && ac == col) {
+                            previousAttacker = gs.getPlayer2Id();
+                            previousIsHit = (Boolean) a.get("isHit");
+                            break;
+                        }
+                    }
+                }
+            }
+
+            var errorMessage = new java.util.HashMap<String, Object>();
+            errorMessage.put("type", "ATTACK_ERROR");
+            errorMessage.put("message", "This cell was already attacked!");
+            errorMessage.put("row", row);
+            errorMessage.put("col", col);
+            if (previousAttacker != null) {
+                errorMessage.put("attackedBy", previousAttacker);
+            }
+            if (previousIsHit != null) {
+                errorMessage.put("isHit", previousIsHit);
+            }
+
             messagingTemplate.convertAndSend("/topic/game/" + roomId, errorMessage);
             return;
         }
 
-        // Mark this cell as attacked
-        attackedCells.add(cellKey);
+        // Mark this cell as attacked for this attacker
+        attackerAttacks.add(cellKey);
 
         // Get defender (the other player)
         java.util.List<String> players = roomPlayers.get(roomId);
@@ -365,7 +403,7 @@ public class GameController {
                 roomReadyPlayers.remove(roomId);
                 roomPlayers.remove(roomId);
                 roomCurrentTurn.remove(roomId);
-                roomAttackedCells.remove(roomId);
+                roomAttacksPerPlayer.remove(roomId);
                 roomPlayerHits.remove(roomId);
                 roomGameStart.remove(roomId);
                 roomGameMode.remove(roomId);
@@ -520,12 +558,12 @@ public class GameController {
             // Initialize memory structures
             roomReadyPlayers.putIfAbsent(roomId, new ConcurrentHashMap<>());
             roomPlayers.putIfAbsent(roomId, new java.util.ArrayList<>());
-            roomAttackedCells.putIfAbsent(roomId, java.util.concurrent.ConcurrentHashMap.newKeySet());
+            roomAttacksPerPlayer.putIfAbsent(roomId, new ConcurrentHashMap<>());
             roomPlayerHits.putIfAbsent(roomId, new ConcurrentHashMap<>());
 
             Map<String, Object> readyPlayers = roomReadyPlayers.get(roomId);
             java.util.List<String> players = roomPlayers.get(roomId);
-            java.util.Set<String> attackedCells = roomAttackedCells.get(roomId);
+            Map<String, java.util.Set<String>> attacksByPlayer = roomAttacksPerPlayer.get(roomId);
             Map<String, java.util.Set<String>> playerHits = roomPlayerHits.get(roomId);
 
             // Add players and their ships
@@ -541,28 +579,32 @@ public class GameController {
                 playerHits.putIfAbsent(gameState.getPlayer2Id(), java.util.concurrent.ConcurrentHashMap.newKeySet());
             }
 
-            // Restore attacks
-            if (gameState.getPlayer1Attacks() != null) {
+            // Restore attacks per player
+            if (gameState.getPlayer1Attacks() != null && gameState.getPlayer1Id() != null) {
+                attacksByPlayer.putIfAbsent(gameState.getPlayer1Id(), java.util.concurrent.ConcurrentHashMap.newKeySet());
+                java.util.Set<String> p1Set = attacksByPlayer.get(gameState.getPlayer1Id());
                 for (Map<String, Object> attack : gameState.getPlayer1Attacks()) {
                     int row = ((Number) attack.get("row")).intValue();
                     int col = ((Number) attack.get("col")).intValue();
                     boolean isHit = (Boolean) attack.get("isHit");
                     String cellKey = row + "," + col;
-                    attackedCells.add(cellKey);
-                    if (isHit && gameState.getPlayer1Id() != null) {
+                    p1Set.add(cellKey);
+                    if (isHit) {
                         playerHits.get(gameState.getPlayer1Id()).add(cellKey);
                     }
                 }
             }
 
-            if (gameState.getPlayer2Attacks() != null) {
+            if (gameState.getPlayer2Attacks() != null && gameState.getPlayer2Id() != null) {
+                attacksByPlayer.putIfAbsent(gameState.getPlayer2Id(), java.util.concurrent.ConcurrentHashMap.newKeySet());
+                java.util.Set<String> p2Set = attacksByPlayer.get(gameState.getPlayer2Id());
                 for (Map<String, Object> attack : gameState.getPlayer2Attacks()) {
                     int row = ((Number) attack.get("row")).intValue();
                     int col = ((Number) attack.get("col")).intValue();
                     boolean isHit = (Boolean) attack.get("isHit");
                     String cellKey = row + "," + col;
-                    attackedCells.add(cellKey);
-                    if (isHit && gameState.getPlayer2Id() != null) {
+                    p2Set.add(cellKey);
+                    if (isHit) {
                         playerHits.get(gameState.getPlayer2Id()).add(cellKey);
                     }
                 }
@@ -873,7 +915,7 @@ public class GameController {
                 roomReadyPlayers.remove(roomId);
                 roomPlayers.remove(roomId);
                 roomCurrentTurn.remove(roomId);
-                roomAttackedCells.remove(roomId);
+                roomAttacksPerPlayer.remove(roomId);
                 roomPlayerHits.remove(roomId);
                 roomGameStart.remove(roomId);
                 roomGameMode.remove(roomId);

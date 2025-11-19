@@ -37,6 +37,8 @@ export default function Game() {
     const [myAttacks, setMyAttacks] = useState<Array<{row: number, col: number, isHit: boolean}>>([]);
     const [pendingAttacks, setPendingAttacks] = useState<Array<{row: number, col: number}>>([]);
     const [opponentAttacks, setOpponentAttacks] = useState<Array<{row: number, col: number, isHit: boolean}>>([]);
+    // Cells that are known-blocked by server (ATTACK_ERROR) to avoid resending
+    const [blockedCells, setBlockedCells] = useState<Record<string, true>>({});
     const [winner, setWinner] = useState<string | null>(null);
     const [winReason, setWinReason] = useState<string | null>(null);
     const [gameOverMessage, setGameOverMessage] = useState<string | null>(null);
@@ -93,6 +95,19 @@ export default function Game() {
                             const gameState = gameStateRes.data;
                             console.log('Game state loaded:', gameState);
 
+                            // Determine which player we are (needed to interpret attack lists)
+                            const isPlayer1 = user && gameState.player1Id === user.id;
+
+                            // Build blockedCells from authoritative game state but only from the attacks made by THIS player
+                            try {
+                                const blocked: Record<string, true> = {};
+                                const playerAttacks = isPlayer1 ? (Array.isArray(gameState.player1Attacks) ? gameState.player1Attacks : []) : (Array.isArray(gameState.player2Attacks) ? gameState.player2Attacks : []);
+                                for (const a of playerAttacks) { blocked[`${Number(a.row)}-${Number(a.col)}`] = true; }
+                                setBlockedCells(blocked);
+                            } catch (e) {
+                                // non-fatal
+                            }
+
                             // Restore game mode
                             if (gameState.gameMode) {
                                 setGameMode(gameState.gameMode);
@@ -100,7 +115,6 @@ export default function Game() {
                             }
 
                             // Determine which player we are
-                            const isPlayer1 = user && gameState.player1Id === user.id;
                             const isPlayer2 = user && gameState.player2Id === user.id;
 
                             // Check if game is finished
@@ -382,12 +396,75 @@ export default function Game() {
                     } else if (payload.type === 'ATTACK_ERROR') {
                         // Handle attack error (e.g., cell already attacked)
                         console.warn('⚠️ Attack error:', payload.message, { row: payload.row, col: payload.col });
+
+                        // Mark blocked cell immediately so UI won't try to resend while reconciling
+                        setBlockedCells(prev => ({ ...prev, [`${payload.row}-${payload.col}`]: true }));
+
                         // If we had this attack pending, remove it so the user can try another cell
                         try {
                             setPendingAttacks(prev => prev.filter(p => !(p.row === payload.row && p.col === payload.col)));
                         } catch (e) {}
-                        // Optionally show a toast notification to the user
-                        // For now, just log it - the frontend check should prevent this
+
+                        // The backend is authoritative. If we receive an ATTACK_ERROR it means the cell was already attacked
+                        // by someone else (or an earlier request). Reconcile UI by fetching the current game state and updating
+                        // the local attack arrays so the board displays the cell as attacked.
+                        (async () => {
+                            try {
+                                if (!roomId) return;
+                                const gsRes = await api.get(`/api/game-state/${roomId}`);
+                                const gs = gsRes.data;
+                                if (!gs) return;
+
+                                const isPlayer1 = user && gs.player1Id === user.id;
+                                const playerAttacks = isPlayer1 ? (gs.player1Attacks || []) : (gs.player2Attacks || []);
+                                const opponentAttacks = isPlayer1 ? (gs.player2Attacks || []) : (gs.player1Attacks || []);
+
+                                // Normalize and set arrays separately (playerAttacks are attacks made by THIS player on opponent's board)
+                                const normalize = (a:any) => ({ row: Number(a.row), col: Number(a.col), isHit: !!a.isHit });
+                                const normalizedPlayerAttacks = Array.isArray(playerAttacks) ? playerAttacks.map(normalize) : [];
+                                const normalizedOpponentAttacks = Array.isArray(opponentAttacks) ? opponentAttacks.map(normalize) : [];
+                                setMyAttacks(normalizedPlayerAttacks);
+                                setOpponentAttacks(normalizedOpponentAttacks);
+
+                                // Update blockedCells to reflect attacks made by THIS player
+                                try {
+                                    const blocked: Record<string, true> = {};
+                                    for (const a of normalizedPlayerAttacks) blocked[`${a.row}-${a.col}`] = true;
+                                    setBlockedCells(prev => ({ ...prev, ...blocked }));
+                                } catch (e) {}
+
+                                // Also remove any pending entry for that cell (defensive)
+                                setPendingAttacks(prev => prev.filter(p => !(p.row === payload.row && p.col === payload.col)));
+
+                                // Defensive fallback: if neither attack list contains the cell, add a local marker so UI shows it as attacked
+                                const existsKey = `${payload.row}-${payload.col}`;
+                                const playerHasCell = normalizedPlayerAttacks.some(a => a.row === payload.row && a.col === payload.col);
+                                const opponentHasCell = normalizedOpponentAttacks.some(a => a.row === payload.row && a.col === payload.col);
+                                if (!playerHasCell && !opponentHasCell) {
+                                    // Defensive: mark it on myAttacks (so enemy board shows it blocked) as a miss
+                                    setMyAttacks(prev => {
+                                        if (prev.some(a => Number(a.row) === payload.row && Number(a.col) === payload.col)) return prev;
+                                        return [...prev, { row: payload.row, col: payload.col, isHit: false }];
+                                    });
+                                    setBlockedCells(prev => ({ ...prev, [existsKey]: true }));
+                                } else {
+                                    // ensure blocked cell is set if server already recorded it
+                                    if (playerHasCell) setBlockedCells(prev => ({ ...prev, [existsKey]: true }));
+                                }
+
+                                console.log('Reconciled attacks from server after ATTACK_ERROR', { roomId, isPlayer1 });
+                            } catch (err) {
+                                console.warn('Failed to reconcile game state after ATTACK_ERROR', err);
+                                // As a last resort, ensure pending is cleared so user can continue
+                                setPendingAttacks(prev => prev.filter(p => !(p.row === payload.row && p.col === payload.col)));
+                                // And locally mark the cell as attacked to avoid repeated backend rejects
+                                setMyAttacks(prev => {
+                                    if (prev.some(a => Number(a.row) === payload.row && Number(a.col) === payload.col)) return prev;
+                                    return [...prev, { row: payload.row, col: payload.col, isHit: false }];
+                                });
+                                setBlockedCells(prev => ({ ...prev, [`${payload.row}-${payload.col}`]: true }));
+                            }
+                        })();
                     } else if (payload.type === 'TURN_CHANGE') {
                         console.log('🔄 Turn changed (after MISS):', payload);
                         const isMyNewTurn = payload.currentPlayer === user?.id;
@@ -561,9 +638,29 @@ export default function Game() {
             console.error('Error deactivating WebSocket during leave:', e);
         }
 
-        // Navigate to lobby immediately - don't try to clean up backend state
-        // Backend will handle cleanup when players disconnect
-        navigate('/lobby', { replace: true });
+        // Notify server about leaving the lobby (non-host)
+        (async () => {
+            try {
+                if (!roomId) return;
+                // If the user is host, deleteLobbyIfHost will remove the lobby (already present elsewhere)
+                if (isHostRef.current) {
+                    console.log('User is host; attempting to delete lobby on leave');
+                    await deleteLobbyIfHost();
+                } else {
+                    // Non-host should notify server they left so the slot is freed
+                    try {
+                        await api.patch(`/api/lobbies/${roomId}/leave`);
+                        console.log('Notified server about leaving lobby');
+                    } catch (err) {
+                        console.warn('Failed to notify server about leaving lobby', err);
+                    }
+                }
+            } catch (e) {
+                console.error('Error during leave notification', e);
+            } finally {
+                navigate('/lobby', { replace: true });
+            }
+        })();
     }, [navigate]);
 
 
@@ -585,16 +682,56 @@ export default function Game() {
         console.log('Ships placed, waiting for opponent...', { opponentReady });
     };
 
+    // Helper: attempt to send attack with retries while WS reconnects
+    const sendAttackWithRetry = (row: number, col: number, maxAttempts = 6) => {
+        let attempt = 0;
+        const trySend = () => {
+            attempt++;
+            if (stompClientRef.current && (stompClientRef.current.connected || (stompClientRef.current as any).active)) {
+                try {
+                    stompClientRef.current.publish({
+                        destination: `/app/game/${roomId}/attack`,
+                        body: JSON.stringify({ playerId: user?.id, row, col })
+                    });
+                    console.log(`✓ Attack published on attempt ${attempt} [${row},${col}]`);
+                    return;
+                } catch (e) {
+                    console.warn('Publish failed, will retry', e);
+                }
+            } else {
+                console.log(`WS not ready (attempt ${attempt}), will retry shortly...`);
+                try {
+                    stompClientRef.current?.activate();
+                } catch (e) {}
+            }
+
+            if (attempt < maxAttempts) {
+                setTimeout(trySend, 500 * attempt);
+            } else {
+                console.error('Failed to send attack after retries, clearing pending:', { row, col });
+                // clear pending so UI doesn't block forever
+                setPendingAttacks(prev => prev.filter(p => !(p.row === row && p.col === col)));
+                // Mark blocked? No — notify the user instead
+                try { alert('Could not send attack due to network issues. Please try again.'); } catch (e) {}
+            }
+        };
+        trySend();
+    };
+
     const handleCellClick = (row: number, col: number) => {
         if (!isMyTurn || gamePhase !== 'playing') {
             console.log('❌ Not your turn or game not started', { isMyTurn, gamePhase });
             return;
         }
 
-        // Check if this cell has already been attacked
-        const alreadyAttacked = myAttacks.some(attack => attack.row === row && attack.col === col) || pendingAttacks.some(attack => attack.row === row && attack.col === col);
+        const key = `${row}-${col}`;
+
+        // Check if this cell has already been attacked by me, pending locally, or blocked by server
+        const alreadyAttacked = myAttacks.some(attack => attack.row === row && attack.col === col)
+            || pendingAttacks.some(attack => attack.row === row && attack.col === col)
+            || (blockedCells && blockedCells[key]);
         if (alreadyAttacked) {
-            console.log('❌ Cell already attacked or pending', { row, col });
+            console.log('❌ Cell already attacked or pending/blocked', { row, col });
             return;
         }
 
@@ -607,18 +744,9 @@ export default function Game() {
             setPendingAttacks(prev => prev.filter(p => !(p.row === row && p.col === col)));
         }, 8000);
 
-        // Send attack to server
-        if (stompClientRef.current && roomId) {
-            stompClientRef.current.publish({
-                destination: `/app/game/${roomId}/attack`,
-                body: JSON.stringify({
-                    playerId: user?.id,
-                    row: row,
-                    col: col
-                })
-            });
-            console.log('✓ Attack sent to server, waiting for turn change...');
-        }
+        // Try to send immediately, but if WS is down we'll retry in background
+        // Send with retry helper (will attempt immediate publish or reconnect & retry)
+        sendAttackWithRetry(row, col, 8);
 
         // Don't manually change turn - wait for backend TURN_CHANGE message
     };
@@ -654,7 +782,7 @@ export default function Game() {
                             'bg-blue-500/20 text-blue-300 border-blue-500/40'
                         }`}>
                             {gameMode === 'speed' && '⚡ Speed'}
-                            {gameMode === 'ranked' && '🏆 Ranked'}
+                            {gameMode === 'ranked' && '🏆 Ranked Mode'}
                             {gameMode === 'classic' && '⚓ Classic'}
                         </span>
                         {gameMode === 'speed' && gamePhase === 'playing' && turnTimeLimit > 0 && (
@@ -1115,19 +1243,19 @@ export default function Game() {
                                     </h3>
                                     <div className="grid grid-cols-3 gap-2 sm:gap-4">
                                         <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-2 sm:p-3 text-center">
-                                            <div className="text-xs sm:text-sm text-muted mb-1">Hits</div>
+                                            <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Hits</div>
                                             <div className="text-xl sm:text-3xl font-black text-red-400">
                                                 {myAttacks.filter(a => a.isHit).length}
                                             </div>
                                         </div>
                                         <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2 sm:p-3 text-center">
-                                            <div className="text-xs sm:text-sm text-muted mb-1">Misses</div>
+                                            <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Misses</div>
                                             <div className="text-xl sm:text-3xl font-black text-blue-400">
                                                 {myAttacks.filter(a => !a.isHit).length}
                                             </div>
                                         </div>
                                         <div className="bg-accent/10 border border-accent/30 rounded-lg p-2 sm:p-3 text-center">
-                                            <div className="text-xs sm:text-sm text-muted mb-1">Accuracy</div>
+                                            <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Accuracy</div>
                                             <div className="text-xl sm:text-3xl font-black text-accent">
                                                 {myAttacks.length > 0
                                                     ? Math.round((myAttacks.filter(a => a.isHit).length / myAttacks.length) * 100)

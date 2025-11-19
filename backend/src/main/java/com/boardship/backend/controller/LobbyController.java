@@ -146,6 +146,54 @@ public class LobbyController {
         return ResponseEntity.ok(updated);
     }
 
+    @PatchMapping("/{id}/leave")
+    public ResponseEntity<?> leaveLobby(@PathVariable String id) {
+        Optional<Lobby> opt = lobbyRepository.findById(id);
+        if (opt.isEmpty()) return ResponseEntity.notFound().build();
+
+        Lobby lobby = opt.get();
+
+        // Only decrement if currentPlayers > 0
+        Query query = new Query(Criteria.where("_id").is(id).and("currentPlayers").gte(1));
+        Update update = new Update().inc("currentPlayers", -1);
+        UpdateResult result = mongoTemplate.updateFirst(query, update, Lobby.class);
+
+        if (result.getModifiedCount() == 0) {
+            // nothing changed (maybe already zero)
+            Lobby refreshed = lobbyRepository.findById(id).orElse(null);
+            if (refreshed != null) {
+                messagingTemplate.convertAndSend("/topic/lobbies", refreshed);
+                return ResponseEntity.ok(refreshed);
+            }
+            return ResponseEntity.status(HttpStatus.CONFLICT).body("No players to remove");
+        }
+
+        Lobby updated = lobbyRepository.findById(id).orElseThrow();
+
+        // If lobby was 'in-progress' but now has room, set status back to waiting
+        if ("in-progress".equalsIgnoreCase(updated.getStatus()) && updated.getCurrentPlayers() < updated.getMaxPlayers()) {
+            mongoTemplate.updateFirst(new Query(Criteria.where("_id").is(id)), new Update().set("status", "waiting"), Lobby.class);
+            updated = lobbyRepository.findById(id).orElseThrow();
+        }
+
+        // If there are now 0 players, and the game is finished (or no game state exists), remove the lobby entirely
+        if (updated.getCurrentPlayers() == 0) {
+            // Try to find a related game state; if none or it's finished, delete the lobby
+            Optional<GameState> maybeState = gameStateRepository.findById(id);
+            if (maybeState.isEmpty() || "finished".equalsIgnoreCase(maybeState.get().getGamePhase())) {
+                // delete and broadcast deletion notice so frontends remove the room
+                lobbyRepository.deleteById(id);
+                messagingTemplate.convertAndSend("/topic/lobbies", java.util.Map.of("id", id, "deleted", true));
+                return ResponseEntity.noContent().build();
+            }
+        }
+
+        // Broadcast the updated lobby
+        messagingTemplate.convertAndSend("/topic/lobbies", updated);
+
+        return ResponseEntity.ok(updated);
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteLobby(@PathVariable String id) {
         Optional<Lobby> opt = lobbyRepository.findById(id);

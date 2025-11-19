@@ -4,6 +4,7 @@ import PageContainer from "../components/PageContainer";
 import RankDisplay from "../components/RankDisplay";
 import api from "../utils/api";
 import { calculateAchievements, getRarityColor, getRarityGradient, getCategoryIcon } from '../utils/achievements';
+import { formatModeLabel } from '../utils/modes';
 
 interface RankInfo {
     rank: string;
@@ -341,7 +342,7 @@ export default function Profile() {
                                         <div className="flex gap-2 flex-wrap">
                                             {[
                                                 { value: 'all', label: 'All', icon: '🎮' },
-                                                { value: 'ranked', label: 'Ranked', icon: '🏆' },
+                                                { value: 'ranked', label: 'Ranked Mode', icon: '🏆' },
                                                 { value: 'classic', label: 'Classic', icon: '⚓' },
                                                 { value: 'speed', label: 'Speed', icon: '⚡' }
                                             ].map(filter => (
@@ -397,7 +398,7 @@ export default function Profile() {
                                                                         match.mode.toLowerCase() === 'speed' ? 'bg-orange-500/20 text-orange-400' :
                                                                         'bg-blue-500/20 text-blue-400'
                                                                     }`}>
-                                                                        {match.mode}
+                                                                        {formatModeLabel(match.mode)}
                                                                     </span>
                                                                     <span className="hidden sm:inline">•</span>
                                                                     <span className="hidden sm:inline">{formatDate(match.playedAt)}</span>

@@ -5,12 +5,13 @@ import useAuth from '../state/auth';
 export default function PresenceHeartbeat() {
     const token = useAuth((state) => state.token);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const reachableRef = useRef<boolean>(false);
 
     useEffect(() => {
         const sendPing = () => {
-            api.post('/api/auth/ping').catch(() => {
-                // ignore errors; presence will fall back to scheduled cleanup
-            });
+            api.post('/api/auth/ping')
+                .then(() => { reachableRef.current = true; })
+                .catch(() => { reachableRef.current = false; });
         };
 
         if (!token) {
@@ -18,6 +19,7 @@ export default function PresenceHeartbeat() {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
             }
+            reachableRef.current = false;
             return;
         }
 
@@ -25,6 +27,9 @@ export default function PresenceHeartbeat() {
         intervalRef.current = setInterval(sendPing, 30_000);
 
         const handleBeforeUnload = () => {
+            // Only attempt to notify backend if we successfully pinged it recently
+            if (!reachableRef.current) return;
+
             try {
                 fetch('/api/auth/offline', {
                     method: 'POST',
@@ -47,6 +52,7 @@ export default function PresenceHeartbeat() {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
             }
+            reachableRef.current = false;
         };
     }, [token]);
 

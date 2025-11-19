@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import PageContainer from "../components/PageContainer";
 import api from '../utils/api';
+import { formatModeLabel } from '../utils/modes';
 import useAuth from '../state/auth';
 import { calculateAchievements, getRarityColor, getRarityGradient } from '../utils/achievements';
 
@@ -21,6 +22,7 @@ type RecentMatchResponse = {
 type RecentMatch = {
     id: string;
     opponent: string;
+    players?: string[];
     mode: string;
     result: MatchOutcome;
     score: string;
@@ -106,9 +108,26 @@ function normalizeResult(result?: string | null): MatchOutcome {
 }
 
 function mapMatchResponse(match: RecentMatchResponse, index: number): RecentMatch {
+    const id = match.id ?? `${match.opponent ?? 'opponent'}-${match.playedAt ?? index}`;
+    const opponent = match.opponent ?? 'Unknown';
+    // Try to infer players from multiple possible API shapes
+    let players: string[] | undefined = undefined;
+    // Common per-user shape: opponent + this user (we'll render 'You' client-side if needed)
+    if ((match as any).playerA || (match as any).playerB) {
+        const pa = (match as any).playerA ?? (match as any).playerUsername ?? null;
+        const pb = (match as any).playerB ?? (match as any).opponent ?? null;
+        players = [pa ?? 'Unknown', pb ?? 'Unknown'];
+    } else if ((match as any).players && Array.isArray((match as any).players)) {
+        players = (match as any).players.slice(0,2).map((p: any) => p ?? 'Unknown');
+    } else if (match.opponent) {
+        // fallback: only opponent known
+        players = undefined;
+    }
+
     return {
-        id: match.id ?? `${match.opponent ?? 'opponent'}-${match.playedAt ?? index}`,
-        opponent: match.opponent ?? 'Unknown',
+        id,
+        opponent,
+        players,
         mode: match.mode ?? 'Classic',
         result: normalizeResult(match.result),
         score: match.score ?? '—',
@@ -371,7 +390,7 @@ export default function Dashboard() {
 
                                     const durationLabel = formatDuration(match.durationSeconds);
                                     const relativeTime = formatRelativeTime(match.playedAt);
-                                    const metaSegments = [`${match.mode} Mode`];
+                                    const metaSegments = [formatModeLabel(match.mode)];
                                     if (durationLabel) metaSegments.push(durationLabel);
                                     if (relativeTime) metaSegments.push(relativeTime);
                                     const metaLine = metaSegments.join(' • ');
@@ -387,6 +406,17 @@ export default function Dashboard() {
                                                 : 'text-accent';
                                     const pointsLabel = hasPoints ? `${points > 0 ? '+' : ''}${points} RP` : null;
 
+                                    const playersLine: string = (match.players && match.players.length === 2)
+                                        ? (() => {
+                                            const p0 = match.players![0] ?? 'Unknown';
+                                            const p1 = match.players![1] ?? 'Unknown';
+                                            const uname = user?.username;
+                                            const dp0 = uname && p0 === uname ? 'You' : p0;
+                                            const dp1 = uname && p1 === uname ? 'You' : p1;
+                                            return `${dp0} vs ${dp1}`;
+                                        })()
+                                        : `vs ${match.opponent}`;
+
                                     return (
                                         <div
                                             key={match.id}
@@ -397,7 +427,7 @@ export default function Dashboard() {
                                                     {badgeIcon}
                                                 </div>
                                                 <div>
-                                                    <div className="font-semibold text-accent">vs {match.opponent}</div>
+                                                    <div className="font-semibold text-accent">{playersLine}</div>
                                                     <div className="text-sm text-muted">{metaLine}</div>
                                                 </div>
                                             </div>
