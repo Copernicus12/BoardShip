@@ -19,6 +19,11 @@
   --navy-rgb: 7,16,33;
 }
 
+.neon-title { text-shadow: 0 0 12px rgba(var(--neon-rgb), 0.8), 0 0 28px rgba(var(--cyan-rgb), 0.4); letter-spacing: 0.02em; }
+.neon-backlight { position: relative; }
+.neon-backlight::after { content: ""; position: absolute; inset: -16px -28px -24px; background: radial-gradient(circle at 50% 40%, rgba(var(--neon-rgb), 0.28), rgba(var(--cyan-rgb), 0.12), transparent 60%); filter: blur(22px); z-index: -1; pointer-events: none; }
+
+
 /* Light theme overrides */
 html.light {
   --bg: #f7fafc;
