@@ -1,8 +1,10 @@
 import { Home, Users, Settings, Anchor, X, Trophy, LayoutDashboard, User } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
+import useAuth from "../state/auth"
 
 export default function Sidebar({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
     const loc = useLocation()
+    const { token } = useAuth()
 
     const menu = [
         { name: "Home", icon: <Home size={20} />, path: "/" },
@@ -12,6 +14,8 @@ export default function Sidebar({ open = false, onClose }: { open?: boolean; onC
         { name: "Profile", icon: <User size={20} />, path: "/profile" },
         { name: "Settings", icon: <Settings size={20} />, path: "/settings" },
     ]
+
+    const filteredMenu = token ? menu.filter((m) => m.path !== "/") : menu
 
     const mobileTransform = open ? "translate-x-0" : "-translate-x-full md:translate-x-0"
 
@@ -65,7 +69,7 @@ export default function Sidebar({ open = false, onClose }: { open?: boolean; onC
 
             {/* MENIU */}
             <nav className="flex flex-col gap-2 mt-10 px-4 relative z-10">
-                {menu.map((m) => (
+                {filteredMenu.map((m) => (
                     <Link
                         key={m.path}
                         to={m.path}

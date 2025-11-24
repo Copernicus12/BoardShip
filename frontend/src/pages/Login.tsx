@@ -53,29 +53,29 @@ export default function Login() {
                     </div>
 
                     <p className="relative z-10 text-lg text-accent mb-5">
-                        Conecteaza-te si continua sa-ti orchestrezi flota. Panou aerisit, acelasi vibe neon.
+                        Log in to keep orchestrating your fleet. Same neon vibe, cleaner bridge.
                     </p>
 
                     <div className="relative z-10 grid gap-4">
                         <div className="flex items-start gap-3 bg-navy/40 border border-accent rounded-xl p-3">
                             <div className="mt-1 h-2 w-2 rounded-full bg-neon shadow-glow" />
                             <div>
-                                <p className="text-sm text-neon font-semibold">Protectie & control</p>
-                                <p className="text-sm text-muted">Autentificare sigura si acces instant in puntea de comanda.</p>
+                                <p className="text-sm text-neon font-semibold">Protection & control</p>
+                                <p className="text-sm text-muted">Secure login and instant access to the command bridge.</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3 bg-navy/40 border border-accent rounded-xl p-3">
                             <div className="mt-1 h-2 w-2 rounded-full bg-cyan shadow-glow" />
                             <div>
-                                <p className="text-sm text-neon font-semibold">Status vizibil</p>
-                                <p className="text-sm text-muted">Vezi rapid sesiunea, progresul si cine mai navigheaza cu tine.</p>
+                                <p className="text-sm text-neon font-semibold">Visible status</p>
+                                <p className="text-sm text-muted">Quick glance at session, progress, and who’s online.</p>
                             </div>
                         </div>
                         <div className="flex items-start gap-3 bg-navy/40 border border-accent rounded-xl p-3">
                             <div className="mt-1 h-2 w-2 rounded-full bg-neon shadow-glow" />
                             <div>
-                                <p className="text-sm text-neon font-semibold">Treci direct la actiune</p>
-                                <p className="text-sm text-muted">Dupa login mergi direct in dashboard sau lanseaza o noua batalie.</p>
+                                <p className="text-sm text-neon font-semibold">Straight to action</p>
+                                <p className="text-sm text-muted">After login, jump to dashboard or launch a new battle.</p>
                             </div>
                         </div>
                     </div>
@@ -90,7 +90,7 @@ export default function Login() {
 
                     <div className="relative z-10 flex items-center justify-between mb-6">
                         <div>
-                            <p className="text-muted text-xs uppercase tracking-[0.25em]">Logare flota</p>
+                            <p className="text-muted text-xs uppercase tracking-[0.25em]">Fleet log-in</p>
                             <h2 className="text-3xl font-bold text-neon">Login</h2>
                         </div>
                         <div className="px-3 py-1 rounded-full bg-neon/20 border border-neon/40 text-[12px] text-neon font-semibold">
@@ -118,7 +118,7 @@ export default function Login() {
                     </label>
 
                     <label className="relative z-10 mb-6 block">
-                        <span className="text-xs uppercase tracking-[0.08em] text-muted">Parola</span>
+                        <span className="text-xs uppercase tracking-[0.08em] text-muted">Password</span>
                         <input
                             className="mt-1 w-full px-3 py-3 rounded-lg bg-[rgba(11,17,32,0.2)] border border-accent text-accent focus:border-neon outline-none transition placeholder:text-muted"
                             type="password"
@@ -139,9 +139,9 @@ export default function Login() {
                     </button>
 
                     <div className="relative z-10 mt-4 text-center text-sm">
-                        <span className="text-accent">Nu ai cont? </span>
+                        <span className="text-accent">Don&apos;t have an account? </span>
                         <Link to="/register" className="text-neon hover:underline font-semibold">
-                            Inregistreaza-te
+                            Register
                         </Link>
                     </div>
                 </form>

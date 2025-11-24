@@ -18,9 +18,14 @@ type PlacedShip = {
     orientation: 'horizontal' | 'vertical';
 };
 
-// Prefer an explicit WS endpoint from env; otherwise fall back to a same-origin `/ws`
-// path so local dev can rely on the Vite proxy and production can use the backend host.
-const WS_ENDPOINT = import.meta.env.VITE_WS_URL ?? '/ws';
+// Prefer explicit endpoint; otherwise build one that targets backend directly (bypasses Vite proxy)
+const buildWsEndpoint = () => {
+    if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL as string;
+    const host = (typeof window !== 'undefined' && window.location.hostname) ? window.location.hostname : 'localhost';
+    const protocol = (typeof window !== 'undefined' && window.location.protocol === 'https:') ? 'https://' : 'http://';
+    return `${protocol}${host}:8080/ws`;
+};
+const WS_ENDPOINT = buildWsEndpoint();
 
 export default function Game() {
     const { roomId } = useParams();

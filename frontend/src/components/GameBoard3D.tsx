@@ -1,4 +1,4 @@
-import { Canvas } from '@react-three/fiber';
+import { Canvas, type ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Grid } from '@react-three/drei';
 import { useState, useRef, useEffect } from 'react';
 import * as THREE from 'three';
@@ -60,7 +60,7 @@ function WaterCell({
             ref={meshRef}
             position={position}
             onClick={canClick ? onClick : undefined}
-            onPointerOver={(e) => {
+            onPointerOver={(e: ThreeEvent<PointerEvent>) => {
                 e.stopPropagation();
                 if (meshRef.current && canClick) {
                     document.body.style.cursor = 'pointer';

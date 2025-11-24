@@ -6,17 +6,19 @@ import ScrollToTop from './components/ScrollToTop';
 import ScrollToTopOnNavigate from './components/ScrollToTopOnNavigate';
 import { Menu } from 'lucide-react';
 import PresenceHeartbeat from './components/PresenceHeartbeat';
+import useAuth from './state/auth';
 
 export default function App() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const location = useLocation();
+    const { token } = useAuth();
 
     // Don't show sidebar on login/register pages
     const authPages = ['/login', '/register'];
     const isAuthPage = authPages.includes(location.pathname);
 
-    // Show sidebar on all pages except auth pages
-    const showSidebar = !isAuthPage;
+    // Show sidebar only when authenticated and not on auth pages
+    const showSidebar = Boolean(token) && !isAuthPage;
 
     return (
         <div className="min-h-screen bg-app">

@@ -31,6 +31,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         // Allow public GET access to list and fetch lobbies so lobby list + WS info are accessible without auth
                         .requestMatchers(HttpMethod.GET, "/api/lobbies", "/api/lobbies/**").permitAll()
+                        // Public recent matches + online count (cover optional trailing slash/params)
+                        .requestMatchers(HttpMethod.GET, "/api/matches/recent/global", "/api/matches/recent/global/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/matches/recent/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/online", "/api/users/online/**").permitAll()
                         // Allow authenticated PATCH for join
                         .requestMatchers(HttpMethod.PATCH, "/api/lobbies/*/join").authenticated()
                         // Allow authenticated POST for create
@@ -56,7 +60,14 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         // Allow localhost and any host during development so the frontend served from
         // another machine on the LAN can access the backend. In production restrict this.
-        configuration.setAllowedOriginPatterns(Arrays.asList("http://localhost:5173", "http://localhost:*", "http://127.0.0.1:*", "http://*", "https://*"));
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+                "http://localhost:5173",
+                "http://localhost:*",
+                "http://127.0.0.1:*",
+                "http://192.168.*:*",
+                "http://*",
+                "https://*"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
