@@ -17,6 +17,10 @@
   --neon-rgb: 0,180,216;
   --cyan-rgb: 72,202,228;
   --navy-rgb: 7,16,33;
+  --settings-pad: 1.25rem;
+  --settings-gap: 1rem;
+  --input-py: 0.75rem;
+  --input-px: 0.75rem;
 }
 
 .neon-title { text-shadow: 0 0 12px rgba(var(--neon-rgb), 0.8), 0 0 28px rgba(var(--cyan-rgb), 0.4); letter-spacing: 0.02em; }
@@ -39,6 +43,13 @@ html.light {
   --neon-rgb: 0,126,167;
   --cyan-rgb: 12,164,214;
   --navy-rgb: 255,255,255;
+}
+
+html[data-density="compact"] {
+  --settings-pad: 0.9rem;
+  --settings-gap: 0.6rem;
+  --input-py: 0.55rem;
+  --input-px: 0.65rem;
 }
 
 /* Utility classes */

@@ -19,7 +19,7 @@ export default function Settings() {
     const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
 
     const [savingTheme, setSavingTheme] = useState(false);
-    const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable'); // idea: UI density preference (client-side)
+    const [density, setDensity] = useState<'comfortable' | 'compact'>('comfortable'); // UI density preference (client-side)
 
     useEffect(() => {
         setUsername(user?.username || '');
@@ -27,6 +27,33 @@ export default function Settings() {
             setThemeStore(user.themePreference);
         }
     }, [user, setThemeStore]);
+
+    useEffect(() => {
+        // Ensure DOM class follows store theme
+        if (typeof document !== 'undefined') {
+            const root = document.documentElement;
+            root.classList.remove('light', 'dark');
+            root.classList.add(theme);
+        }
+    }, [theme]);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('boardship-density');
+        if (saved === 'comfortable' || saved === 'compact') {
+            setDensity(saved);
+            if (typeof document !== 'undefined') {
+                document.documentElement.dataset.density = saved;
+            }
+        }
+    }, []);
+
+    const handleDensityChange = (d: 'comfortable' | 'compact') => {
+        setDensity(d);
+        if (typeof document !== 'undefined') {
+            document.documentElement.dataset.density = d;
+        }
+        localStorage.setItem('boardship-density', d);
+    };
 
     const handleThemeChange = async (value: 'dark' | 'light') => {
         setSavingTheme(true);
@@ -114,7 +141,7 @@ export default function Settings() {
                             {(['comfortable','compact'] as const).map((d) => (
                                 <button
                                     key={d}
-                                    onClick={() => setDensity(d)}
+                                    onClick={() => handleDensityChange(d)}
                                     className={`px-3 py-1.5 rounded-lg border text-xs font-semibold ${
                                         density === d ? 'border-neon text-neon bg-neon/10' : 'border-accent/30 text-accent'
                                     }`}
@@ -134,15 +161,16 @@ export default function Settings() {
                         </div>
                         {nameMessage && <span className="text-xs text-accent">{nameMessage}</span>}
                     </div>
-                    <div className="space-y-2">
-                        <label className="text-sm text-muted">Username</label>
-                        <input
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            className="w-full rounded-lg border border-accent/40 bg-card/40 px-3 py-2 text-accent focus:border-neon outline-none"
-                            placeholder="New username"
-                        />
-                    </div>
+                        <div className="space-y-2">
+                            <label className="text-sm text-muted">Username</label>
+                            <input
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                className="w-full rounded-lg border border-accent/60 bg-[#050a16] px-3 text-accent focus:border-neon outline-none"
+                                style={{ padding: `var(--input-py) var(--input-px)` }}
+                                placeholder="New username"
+                            />
+                        </div>
                     <div className="flex justify-end">
                         <button
                             onClick={handleUsernameSave}
@@ -169,7 +197,8 @@ export default function Settings() {
                                 type="password"
                                 value={currentPassword}
                                 onChange={(e) => setCurrentPassword(e.target.value)}
-                                className="w-full rounded-lg border border-accent/40 bg-card/40 px-3 py-2 text-accent focus:border-neon outline-none"
+                                className="w-full rounded-lg border border-accent/60 bg-[#050a16] px-3 text-accent focus:border-neon outline-none"
+                                style={{ padding: `var(--input-py) var(--input-px)` }}
                             />
                         </div>
                         <div className="space-y-2">
@@ -178,7 +207,8 @@ export default function Settings() {
                                 type="password"
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
-                                className="w-full rounded-lg border border-accent/40 bg-card/40 px-3 py-2 text-accent focus:border-neon outline-none"
+                                className="w-full rounded-lg border border-accent/60 bg-[#050a16] px-3 text-accent focus:border-neon outline-none"
+                                style={{ padding: `var(--input-py) var(--input-px)` }}
                             />
                         </div>
                         <div className="space-y-2">
@@ -187,7 +217,8 @@ export default function Settings() {
                                 type="password"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full rounded-lg border border-accent/40 bg-card/40 px-3 py-2 text-accent focus:border-neon outline-none"
+                                className="w-full rounded-lg border border-accent/60 bg-[#050a16] px-3 text-accent focus:border-neon outline-none"
+                                style={{ padding: `var(--input-py) var(--input-px)` }}
                             />
                         </div>
                     </div>

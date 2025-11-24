@@ -9,12 +9,27 @@ type ThemeState = {
     toggle: () => void
 }
 
+const applyThemeClass = (t: Theme) => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(t);
+    root.dataset.theme = t;
+};
+
 const useTheme = create<ThemeState>()(
     persist(
-        (set) => ({
+        (set, get) => ({
             theme: 'dark',
-            setTheme: (t: Theme) => set({ theme: t }),
-            toggle: () => set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
+            setTheme: (t: Theme) => {
+                applyThemeClass(t);
+                set({ theme: t });
+            },
+            toggle: () => {
+                const next: Theme = get().theme === 'dark' ? 'light' : 'dark';
+                applyThemeClass(next);
+                set({ theme: next });
+            },
         }),
         { name: 'boardship-theme' }
     )
