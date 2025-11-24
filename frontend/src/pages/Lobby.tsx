@@ -201,8 +201,6 @@ export default function Lobby() {
                 <div className="pointer-events-none absolute inset-0 -z-10">
                     <div className="absolute -right-24 top-6 w-96 h-96 bg-[radial-gradient(circle_at_center,_rgba(0,180,216,0.18),_transparent_60%)] blur-3xl" />
                     <div className="absolute -left-16 bottom-0 w-[28rem] h-[28rem] bg-[radial-gradient(circle_at_center,_rgba(72,202,228,0.15),_transparent_55%)] blur-3xl" />
-                    <div className="absolute inset-x-16 top-20 h-px bg-gradient-to-r from-transparent via-cyan/40 to-transparent" />
-                    <div className="absolute inset-y-10 left-1/2 w-px bg-gradient-to-b from-transparent via-neon/25 to-transparent" />
                 </div>
 
                 <div className="max-w-6xl mx-auto space-y-8">

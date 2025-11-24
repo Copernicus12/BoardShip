@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import api from '../utils/api'
 
-type User = { id: string; username: string; email: string }
+type User = { id: string; username: string; email: string; themePreference?: 'dark' | 'light' }
 
 type AuthState = {
     user: User | null

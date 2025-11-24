@@ -20,6 +20,7 @@ public class User {
     private String role;
     private String status; // online/offline
     private Instant lastSeen;
+    private String themePreference;
 
     @Builder.Default
     private Integer rankingPoints = 0; // RP for ranked games

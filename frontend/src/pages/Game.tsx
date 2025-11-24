@@ -757,179 +757,163 @@ export default function Game() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-[#0b1220] via-[#101a2e] to-[#0b1220] p-3 sm:p-6">
+        <div className="min-h-screen bg-[#0b1220] p-3 sm:p-6">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
                 <div className="mb-4 sm:mb-6">
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon via-cyan to-accent mb-2 animate-pulse">
-                        🚢 Battleship Arena
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon via-cyan to-accent mb-2">
+                        Battleship Arena
                     </h1>
                     <div className="flex flex-wrap gap-2 sm:gap-3 items-center text-xs sm:text-sm">
                         <span className={`px-2 sm:px-3 py-1 rounded-full font-semibold border backdrop-blur-sm transition-all duration-300 ${
-                            gamePhase === 'waiting' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 shadow-lg shadow-yellow-500/20' :
-                            gamePhase === 'placement' ? 'bg-blue-500/20 text-blue-400 border-blue-500/50 shadow-lg shadow-blue-500/20' :
-                            gamePhase === 'ready' ? 'bg-purple-500/20 text-purple-400 border-purple-500/50 shadow-lg shadow-purple-500/20 animate-pulse' :
-                            gamePhase === 'finished' ? (winner === user?.id ? 'bg-green-500/20 text-green-400 border-green-500/50 shadow-lg shadow-green-500/20' : 'bg-red-500/20 text-red-400 border-red-500/50 shadow-lg shadow-red-500/20') :
-                            isMyTurn ? 'bg-green-500/20 text-green-400 border-green-500/50 shadow-lg shadow-green-500/20 animate-pulse' : 'bg-red-500/20 text-red-400 border-red-500/50 shadow-lg shadow-red-500/20'
+                            gamePhase === 'waiting' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50' :
+                            gamePhase === 'placement' ? 'bg-blue-500/20 text-blue-300 border-blue-500/50' :
+                            gamePhase === 'ready' ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 animate-pulse' :
+                            gamePhase === 'finished' ? (winner === user?.id ? 'bg-green-500/20 text-green-300 border-green-500/50' : 'bg-red-500/20 text-red-300 border-red-500/50') :
+                            isMyTurn ? 'bg-green-500/20 text-green-300 border-green-500/50 animate-pulse' : 'bg-red-500/20 text-red-300 border-red-500/50'
                         }`}>
-                            {gamePhase === 'waiting' && '⏳ Waiting for opponent...'}
-                            {gamePhase === 'placement' && '📍 Place your ships'}
-                            {gamePhase === 'ready' && '⏰ Waiting for opponent...'}
-                            {gamePhase === 'playing' && (isMyTurn ? '🎯 Your Turn' : '⏳ Opponent\'s Turn')}
-                            {gamePhase === 'finished' && (winner === user?.id ? '🏆 Victory!' : '💀 Defeat')}
+                            {gamePhase === 'waiting' && 'Locked in - waiting'}
+                            {gamePhase === 'placement' && 'Placing ships'}
+                            {gamePhase === 'ready' && 'Ready'}
+                            {gamePhase === 'playing' && (isMyTurn ? 'Your turn' : 'Opponent turn')}
+                            {gamePhase === 'finished' && (winner === user?.id ? 'Victory' : 'Defeat')}
                         </span>
                         <span className="px-2 sm:px-3 py-1 rounded-full bg-accent/10 border border-accent/30 text-accent font-semibold">
-                            👥 {opponentConnected ? '2/2' : '1/2'}
+                            {opponentConnected ? 'Players 2/2' : 'Players 1/2'}
                         </span>
                         <span className={`px-2 sm:px-3 py-1 rounded-full font-semibold border ${
-                            gameMode === 'speed' ? 'bg-orange-500/20 text-orange-300 border-orange-500/40' :
-                            gameMode === 'ranked' ? 'bg-purple-500/20 text-purple-300 border-purple-500/40' :
-                            'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                            gameMode === 'speed' ? 'bg-orange-500/20 text-orange-200 border-orange-500/40' :
+                            gameMode === 'ranked' ? 'bg-purple-500/20 text-purple-200 border-purple-500/40' :
+                            'bg-blue-500/20 text-blue-200 border-blue-500/40'
                         }`}>
-                            {gameMode === 'speed' && '⚡ Speed'}
-                            {gameMode === 'ranked' && '🏆 Ranked Mode'}
-                            {gameMode === 'classic' && '⚓ Classic'}
+                            {gameMode === 'speed' && 'Speed'}
+                            {gameMode === 'ranked' && 'Ranked'}
+                            {gameMode === 'classic' && 'Classic'}
                         </span>
                         {gameMode === 'speed' && gamePhase === 'playing' && turnTimeLimit > 0 && (
                             <span className={`px-2 sm:px-3 py-1 rounded-full font-bold border transition-all duration-300 ${
                                 isMyTurn ? (
-                                    turnTimeRemaining <= 1 ? 'bg-red-500/30 text-red-300 border-red-500/50 animate-pulse shadow-lg shadow-red-500/30' : 
-                                    turnTimeRemaining <= 2 ? 'bg-orange-500/30 text-orange-300 border-orange-500/50 shadow-lg shadow-orange-500/30' : 
-                                    'bg-green-500/20 text-green-300 border-green-500/50 shadow-lg shadow-green-500/30'
+                                    turnTimeRemaining <= 1 ? 'bg-red-500/30 text-red-300 border-red-500/50 animate-pulse' :
+                                    turnTimeRemaining <= 2 ? 'bg-orange-500/30 text-orange-200 border-orange-500/50' :
+                                    'bg-green-500/20 text-green-200 border-green-500/50'
                                 ) : (
-                                    'bg-blue-500/20 text-blue-300 border-blue-500/50'
+                                    'bg-blue-500/20 text-blue-200 border-blue-500/50'
                                 )
                             }`}>
-                                ⏱️ {turnTimeRemaining}s {!isMyTurn && <span className="hidden sm:inline">(Opponent)</span>}
+                                {turnTimeRemaining}s
                             </span>
                         )}
                         {isHost && (
-                            <span className="px-2 sm:px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/50 font-semibold">
-                                👑 Host
+                            <span className="px-2 sm:px-3 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/50 font-semibold">
+                                Host
                             </span>
                         )}
                     </div>
                 </div>
 
                 {/* Waiting Phase - Elegant Waiting Room */}
-                {gamePhase === 'waiting' && (
+                
+{gamePhase === 'waiting' && (
                     <div className="relative overflow-hidden">
-                        {/* Background gradient effects */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-neon/5 via-transparent to-accent/5 blur-3xl"></div>
-                        <div className="absolute top-0 left-1/4 w-64 h-64 bg-neon/10 rounded-full blur-3xl animate-pulse"></div>
-                        <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-accent/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-
-                        <div className="relative bg-card/30 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-6 sm:p-12 md:p-16 border border-accent/30 shadow-2xl shadow-neon/10 text-center">
-                            {/* Animated icon */}
-                            <div className="relative inline-block mb-6 sm:mb-8">
-                                <div className="text-6xl sm:text-8xl md:text-9xl animate-bounce">⚓</div>
-                                <div className="absolute -inset-4 bg-gradient-to-r from-neon to-accent rounded-full blur-2xl opacity-20 animate-pulse"></div>
+                        <div className="relative rounded-3xl p-6 sm:p-10 md:p-12 border border-accent/30 shadow-2xl shadow-accent/10 bg-[#0b1220]">
+                            <div className="flex flex-wrap items-center gap-3 mb-6">
+                                <span className="px-3 py-1 rounded-full text-xs font-semibold border border-purple-400/60 bg-purple-500/10 text-purple-200">
+                                    Locked in - waiting
+                                </span>
+                                <span className="px-3 py-1 rounded-full text-xs font-semibold border border-accent/40 bg-accent/10 text-accent">
+                                    {opponentConnected ? 'Players 2/2' : 'Players 1/2'}
+                                </span>
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                                    gameMode === 'speed' ? 'border-orange-400/60 text-orange-200 bg-orange-500/10' :
+                                    gameMode === 'ranked' ? 'border-purple-400/60 text-purple-200 bg-purple-500/10' :
+                                    'border-blue-400/60 text-blue-200 bg-blue-500/10'
+                                }`}>
+                                    {gameMode === 'speed' ? 'Speed' : gameMode === 'ranked' ? 'Ranked' : 'Classic'}
+                                </span>
                             </div>
 
-                            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon via-cyan to-accent mb-4 sm:mb-6">
-                                Waiting for Opponent
-                            </h2>
+                            <div className="relative overflow-hidden rounded-2xl border border-accent/25 bg-[#0b1220] p-8 sm:p-10 text-center shadow-inner shadow-accent/10">
+                                <div className="relative inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full border border-accent/40 bg-accent/5 mx-auto mb-6 shadow-glow"></div>
+                                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon via-cyan to-accent mb-3">
+                                    Waiting for opponent
+                                </h2>
+                                <p className="text-sm sm:text-base text-muted max-w-2xl mx-auto">
+                                    Share the room code and stay here. We keep the feed live while your opponent joins.
+                                </p>
 
-                            <p className="text-base sm:text-lg md:text-xl text-muted mb-4 sm:mb-6 max-w-2xl mx-auto">
-                                Share this room code with your friend to start the battle
-                            </p>
-
-                            {/* Room Code Display */}
-                            <div className="inline-block mb-6 sm:mb-8 relative group">
-                                <div className="absolute inset-0 bg-gradient-to-r from-neon to-accent rounded-xl blur-xl opacity-30 group-hover:opacity-50 transition-opacity"></div>
-                                <div className="relative bg-card/50 backdrop-blur-sm border-2 border-neon/50 rounded-xl px-6 sm:px-10 py-4 sm:py-6">
-                                    <div className="text-xs sm:text-sm text-muted mb-2 font-semibold uppercase tracking-wider">Room Code</div>
-                                    <div className="font-mono text-3xl sm:text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon to-accent tracking-wider">
-                                        {roomId?.substring(0, 8).toUpperCase()}
-                                    </div>
+                                <div className="mt-6 inline-flex items-center gap-3 px-4 py-3 rounded-xl border border-neon/40 bg-neon/10 text-neon font-semibold">
+                                    Room code: <span className="font-mono text-lg tracking-wide text-accent">{roomId?.substring(0, 8).toUpperCase()}</span>
                                 </div>
                             </div>
 
-                            {/* Loading animation */}
-                            <div className="flex justify-center gap-2 sm:gap-3 mb-6 sm:mb-8">
-                                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-neon rounded-full animate-bounce shadow-lg shadow-neon/50" style={{ animationDelay: '0s' }}></div>
-                                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-cyan rounded-full animate-bounce shadow-lg shadow-cyan/50" style={{ animationDelay: '0.2s' }}></div>
-                                <div className="w-3 h-3 sm:w-4 sm:h-4 bg-accent rounded-full animate-bounce shadow-lg shadow-accent/50" style={{ animationDelay: '0.4s' }}></div>
-                            </div>
-
-                            {/* Game info cards */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto mb-6 sm:mb-8">
-                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-3 sm:p-4 hover:border-neon/50 transition-all duration-300 hover:shadow-lg hover:shadow-neon/20">
-                                    <div className="text-2xl sm:text-3xl mb-2">
-                                        {gameMode === 'speed' && '⚡'}
-                                        {gameMode === 'ranked' && '🏆'}
-                                        {gameMode === 'classic' && '⚓'}
-                                    </div>
-                                    <div className="text-xs sm:text-sm text-muted font-semibold uppercase tracking-wider mb-1">Mode</div>
-                                    <div className="text-base sm:text-lg font-bold text-accent capitalize">{gameMode}</div>
+                            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="rounded-xl border border-accent/30 bg-card/50 p-3">
+                                    <p className="text-xs uppercase tracking-[0.14em] text-muted">Mode</p>
+                                    <p className="text-accent font-semibold mt-1 capitalize">{gameMode}</p>
                                 </div>
-                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-3 sm:p-4 hover:border-neon/50 transition-all duration-300 hover:shadow-lg hover:shadow-neon/20">
-                                    <div className="text-2xl sm:text-3xl mb-2">👥</div>
-                                    <div className="text-xs sm:text-sm text-muted font-semibold uppercase tracking-wider mb-1">Players</div>
-                                    <div className="text-base sm:text-lg font-bold text-accent">1 / 2</div>
+                                <div className="rounded-xl border border-accent/30 bg-card/50 p-3">
+                                    <p className="text-xs uppercase tracking-[0.14em] text-muted">Players</p>
+                                    <p className="text-accent font-semibold mt-1">{opponentConnected ? '2 / 2 connected' : '1 / 2 connected'}</p>
                                 </div>
-                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-3 sm:p-4 hover:border-neon/50 transition-all duration-300 hover:shadow-lg hover:shadow-neon/20">
-                                    <div className="text-2xl sm:text-3xl mb-2">🌊</div>
-                                    <div className="text-xs sm:text-sm text-muted font-semibold uppercase tracking-wider mb-1">Grid Size</div>
-                                    <div className="text-base sm:text-lg font-bold text-accent">10 × 10</div>
+                                <div className="rounded-xl border border-accent/30 bg-card/50 p-3">
+                                    <p className="text-xs uppercase tracking-[0.14em] text-muted">Grid size</p>
+                                    <p className="text-accent font-semibold mt-1">10 x 10</p>
                                 </div>
                             </div>
-
-                            {/* Leave button */}
-                            <button
-                                onClick={handleLeaveToLobby}
-                                className="px-6 sm:px-8 py-3 sm:py-4 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl border-2 border-red-500/50 hover:border-red-500 transition-all duration-300 font-bold text-sm sm:text-base shadow-lg hover:shadow-red-500/20 hover:scale-105"
-                            >
-                                Leave Room
-                            </button>
                         </div>
                     </div>
                 )}
-
-                {/* Placement Phase */}
+{/* Placement Phase */}
                 {gamePhase === 'placement' && (
                     <div className="relative">
-                        {/* Background effects */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-accent/5 blur-3xl -z-10"></div>
+                        <div className="pointer-events-none absolute inset-0 -z-10">
+                            <div className="absolute -right-24 top-6 h-80 w-80 bg-[radial-gradient(circle_at_center,_rgba(0,180,216,0.16),_transparent_55%)] blur-3xl" />
+                            <div className="absolute -left-16 bottom-0 h-[22rem] w-[22rem] bg-[radial-gradient(circle_at_center,_rgba(72,202,228,0.12),_transparent_55%)] blur-3xl" />
+                        </div>
 
-                        <div className="max-w-4xl mx-auto">
-                            <div className="bg-card/30 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-accent/30 shadow-2xl shadow-blue-500/10 overflow-hidden">
-                                {/* Header */}
-                                <div className="bg-gradient-to-r from-blue-500/20 via-accent/20 to-blue-500/20 border-b border-accent/30 p-4 sm:p-6">
-                                    <div className="text-center">
-                                        <div className="text-4xl sm:text-5xl mb-3">📍</div>
-                                        <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-cyan to-accent mb-2">
-                                            Deploy Your Fleet
-                                        </h2>
-                                        <p className="text-sm sm:text-base text-muted">
-                                            Position your ships strategically on the battlefield
+                        <div className="max-w-5xl mx-auto space-y-4">
+                            <div className="rounded-2xl border border-accent bg-card/70 backdrop-blur p-6 sm:p-8">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                                    <div>
+                                        <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Preparation</p>
+                                        <h2 className="text-3xl font-bold text-neon">Deploy your fleet</h2>
+                                        <p className="text-sm text-muted max-w-xl">
+                                            Choose a ship, preview its footprint, and confirm placement. Rotate anytime before locking in.
                                         </p>
                                     </div>
-                                </div>
-
-                                {/* Ship placement component */}
-                                <div className="p-4 sm:p-6">
-                                    <ShipPlacement onPlacementComplete={handleShipPlacementComplete} />
-                                </div>
-
-                                {/* Footer with instructions */}
-                                <div className="bg-gradient-to-r from-accent/10 via-blue-500/10 to-accent/10 border-t border-accent/30 p-4 sm:p-6">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                                        <div className="bg-card/40 rounded-lg p-3 border border-accent/20">
-                                            <div className="text-sm font-semibold text-accent mb-1">💡 Quick Tip</div>
-                                            <div className="text-xs text-muted">Click and drag ships to position them on the grid</div>
-                                        </div>
-                                        <div className="bg-card/40 rounded-lg p-3 border border-accent/20">
-                                            <div className="text-sm font-semibold text-accent mb-1">🔄 Rotate Ships</div>
-                                            <div className="text-xs text-muted">Click on a ship to rotate its orientation</div>
-                                        </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <span className="px-3 py-1 rounded-full border border-accent text-accent text-xs uppercase tracking-[0.2em]">
+                                            Step 1/2
+                                        </span>
+                                        <span className="px-3 py-1 rounded-full border border-neon/50 bg-neon/10 text-neon text-xs font-semibold">
+                                            Real-time sync on ready
+                                        </span>
                                     </div>
+                                </div>
 
+                                <ShipPlacement onPlacementComplete={handleShipPlacementComplete} />
+
+                                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                                    <div className="rounded-xl border border-accent bg-navy/50 p-3">
+                                        <p className="text-xs uppercase tracking-[0.14em] text-muted">Orientation</p>
+                                        <p className="text-sm text-accent">Switch between horizontal and vertical for tight fits.</p>
+                                    </div>
+                                    <div className="rounded-xl border border-accent bg-navy/50 p-3">
+                                        <p className="text-xs uppercase tracking-[0.14em] text-muted">Auto layout</p>
+                                        <p className="text-sm text-accent">Use auto-place to start fast, then tweak manually.</p>
+                                    </div>
+                                    <div className="rounded-xl border border-accent bg-navy/50 p-3">
+                                        <p className="text-xs uppercase tracking-[0.14em] text-muted">Fair play</p>
+                                        <p className="text-sm text-accent">Board locks when both players click ready.</p>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 flex justify-end">
                                     <button
                                         onClick={handleLeaveToLobby}
-                                        className="w-full sm:w-auto px-6 py-3 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-xl border-2 border-red-500/50 hover:border-red-500 transition-all duration-300 font-bold text-sm sm:text-base shadow-lg hover:shadow-red-500/20 hover:scale-105"
+                                        className="px-5 py-2.5 rounded-lg border border-red-400/60 text-red-200 hover:bg-red-500/10 transition text-sm font-semibold"
                                     >
-                                        Leave Game
+                                        Leave game
                                     </button>
                                 </div>
                             </div>
@@ -980,8 +964,8 @@ export default function Game() {
 
                             {/* Your ships summary */}
                             <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-4 sm:p-6 max-w-md mx-auto mb-6 sm:mb-8">
-                                <h3 className="text-base sm:text-lg font-bold text-accent mb-3 flex items-center justify-center gap-2">
-                                    <span>⚓</span> Your Fleet
+                                <h3 className="text-base sm:text-lg font-bold text-accent mb-3 text-center">
+                                    Your fleet
                                 </h3>
                                 <div className="grid grid-cols-2 gap-2 text-xs sm:text-sm">
                                     {myShips.map(ship => (
@@ -1021,15 +1005,14 @@ export default function Game() {
                                 ? 'bg-green-900/20 border-green-500/50 shadow-green-500/20' 
                                 : 'bg-red-900/20 border-red-500/50 shadow-red-500/20'
                         }`}>
-                            {/* Animated trophy/skull */}
                             <div className="relative inline-block mb-6 sm:mb-8">
-                                <div className={`text-7xl sm:text-8xl md:text-9xl ${
-                                    winner === user?.id ? 'animate-bounce' : ''
-                                }`}>
-                                    {winner === user?.id ? '🏆' : '💀'}
-                                </div>
-                                <div className={`absolute -inset-6 rounded-full blur-3xl opacity-30 animate-pulse ${
-                                    winner === user?.id ? 'bg-gradient-to-r from-green-400 to-yellow-400' : 'bg-gradient-to-r from-red-500 to-orange-500'
+                                <div className={`h-16 w-16 sm:h-20 sm:w-20 rounded-2xl border-2 ${
+                                    winner === user?.id ? 'border-green-400/70' : 'border-red-400/70'
+                                } bg-gradient-to-br ${
+                                    winner === user?.id ? 'from-green-500/30 to-yellow-400/20' : 'from-red-500/30 to-orange-400/20'
+                                } shadow-lg`} />
+                                <div className={`absolute -inset-4 rounded-3xl blur-2xl opacity-30 ${
+                                    winner === user?.id ? 'bg-green-500/30' : 'bg-red-500/30'
                                 }`}></div>
                             </div>
 
@@ -1041,17 +1024,15 @@ export default function Game() {
 
                             <p className="text-base sm:text-lg md:text-xl text-muted mb-6 sm:mb-8 max-w-2xl mx-auto">
                                 {winReason === 'forfeit' && gameOverMessage ? (
-                                    // Display forfeit message
                                     winner === user?.id ? (
-                                        <span className="text-green-300">🎉 {gameOverMessage}</span>
+                                        <span className="text-green-300">{gameOverMessage}</span>
                                     ) : (
-                                        <span className="text-red-300">😔 You left the game</span>
+                                        <span className="text-red-300">You left the game</span>
                                     )
                                 ) : (
-                                    // Display normal win/loss message
                                     winner === user?.id
-                                        ? <span className="text-green-300">🎯 You destroyed all enemy ships!</span>
-                                        : <span className="text-red-300">💥 All your ships were destroyed!</span>
+                                        ? <span className="text-green-300">You destroyed all enemy ships.</span>
+                                        : <span className="text-red-300">All your ships were destroyed.</span>
                                 )}
                             </p>
 
@@ -1076,21 +1057,18 @@ export default function Game() {
                             {/* Battle Stats */}
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto mb-6 sm:mb-8">
                                 <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-4 hover:border-accent/50 transition-all">
-                                    <div className="text-2xl sm:text-3xl mb-2">💣</div>
                                     <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Hits</div>
                                     <div className="text-2xl sm:text-3xl font-black text-red-400">
                                         {myAttacks.filter(a => a.isHit).length}
                                     </div>
                                 </div>
                                 <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-4 hover:border-accent/50 transition-all">
-                                    <div className="text-2xl sm:text-3xl mb-2">🌊</div>
                                     <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Misses</div>
                                     <div className="text-2xl sm:text-3xl font-black text-blue-400">
                                         {myAttacks.filter(a => !a.isHit).length}
                                     </div>
                                 </div>
                                 <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-4 hover:border-accent/50 transition-all">
-                                    <div className="text-2xl sm:text-3xl mb-2">📊</div>
                                     <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Accuracy</div>
                                     <div className="text-2xl sm:text-3xl font-black text-accent">
                                         {myAttacks.length > 0
@@ -1115,32 +1093,40 @@ export default function Game() {
 
                 {/* Playing Phase - Game Boards */}
                 {gamePhase === 'playing' && (
-                    <div className="space-y-4 sm:space-y-6">
-                        {/* Turn indicator banner for mobile */}
-                        <div className={`sm:hidden bg-gradient-to-r rounded-xl p-4 border-2 shadow-lg transition-all duration-300 ${
-                            isMyTurn 
-                                ? 'from-green-500/20 to-green-600/20 border-green-500/50 shadow-green-500/20' 
-                                : 'from-red-500/20 to-red-600/20 border-red-500/50 shadow-red-500/20'
-                        }`}>
-                            <div className="text-center">
-                                <div className="text-3xl mb-2">{isMyTurn ? '💣' : '⏳'}</div>
-                                <div className="text-lg font-black text-accent">
-                                    {isMyTurn ? 'YOUR TURN!' : 'OPPONENT\'S TURN'}
-                                </div>
-                                {isMyTurn && (
-                                    <div className="text-sm text-muted mt-1">Tap enemy waters to attack</div>
-                                )}
-                            </div>
+                    <div className="relative bg-[#0b1220] border border-accent/30 rounded-3xl p-4 sm:p-6 md:p-7 shadow-2xl shadow-accent/10 space-y-4 sm:space-y-6">
+                        <div className="flex flex-wrap gap-2 sm:gap-3">
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                                isMyTurn ? 'bg-green-500/20 text-green-200 border-green-500/50' : 'bg-red-500/20 text-red-200 border-red-500/50'
+                            }`}>
+                                {isMyTurn ? 'Your turn' : 'Opponent turn'}
+                            </span>
+                            <span className="px-3 py-1 rounded-full text-xs font-semibold border bg-accent/10 border-accent/30 text-accent">
+                                {opponentConnected ? 'Players 2/2' : 'Players 1/2'}
+                            </span>
+                            <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                                gameMode === 'speed' ? 'bg-orange-500/20 text-orange-200 border-orange-500/50' :
+                                gameMode === 'ranked' ? 'bg-purple-500/20 text-purple-200 border-purple-500/50' :
+                                'bg-blue-500/20 text-blue-200 border-blue-500/50'
+                            }`}>
+                                {gameMode === 'speed' && 'Speed'}
+                                {gameMode === 'ranked' && 'Ranked'}
+                                {gameMode === 'classic' && 'Classic'}
+                            </span>
+                            {gameMode === 'speed' && gamePhase === 'playing' && turnTimeLimit > 0 && (
+                                <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                                    isMyTurn ? 'bg-green-500/20 text-green-200 border-green-500/50' : 'bg-blue-500/20 text-blue-200 border-blue-500/50'
+                                }`}>
+                                    {turnTimeRemaining}s
+                                </span>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                             {/* Your Board */}
                             <div className="space-y-3 order-2 lg:order-1">
                                 <div className="flex items-center justify-between">
-                                    <h2 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan to-accent flex items-center gap-2">
-                                        <span>🛡️</span>
-                                        <span className="hidden sm:inline">Your Fleet</span>
-                                        <span className="sm:hidden">Fleet</span>
+                                    <h2 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan to-accent">
+                                        Your fleet
                                     </h2>
                                     <div className="text-xs sm:text-sm text-muted">
                                         <span className="text-red-400 font-bold">{opponentAttacks.filter(a => a.isHit).length}</span>
@@ -1166,43 +1152,43 @@ export default function Game() {
                                     </div>
                                 </div>
 
-                                {/* Ship status - Collapsible on mobile */}
-                                <div className="bg-card/40 backdrop-blur-sm rounded-xl border border-cyan/30 overflow-hidden shadow-lg">
-                                    <details className="group" open={typeof window !== 'undefined' && window.innerWidth >= 640}>
-                                        <summary className="cursor-pointer p-3 sm:p-4 hover:bg-cyan/5 transition-colors">
-                                            <div className="flex items-center justify-between">
-                                                <h3 className="text-base sm:text-lg font-bold text-cyan inline-flex items-center gap-2">
-                                                    <span>⚓</span> Your Ships
-                                                </h3>
-                                                <span className="text-xs text-muted group-open:rotate-180 transition-transform">▼</span>
-                                            </div>
-                                        </summary>
-                                        <div className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-2 text-xs sm:text-sm">
-                                            {myShips.map(ship => {
-                                                const hits = opponentAttacks.filter(attack =>
-                                                    attack.isHit && ship.positions.some(pos => pos.row === attack.row && pos.col === attack.col)
-                                                ).length;
-                                                const isSunk = hits >= ship.size;
+                            {/* Ship status - Collapsible on mobile */}
+                            <div className="bg-card/40 backdrop-blur-sm rounded-xl border border-cyan/30 overflow-hidden shadow-lg">
+                                <details className="group" open={typeof window !== 'undefined' && window.innerWidth >= 640}>
+                                    <summary className="cursor-pointer p-3 sm:p-4 hover:bg-cyan/5 transition-colors">
+                                        <div className="flex items-center justify-between">
+                                            <h3 className="text-base sm:text-lg font-bold text-cyan">
+                                                Your ships
+                                            </h3>
+                                            <span className="text-xs text-muted group-open:rotate-180 transition-transform">▼</span>
+                                        </div>
+                                    </summary>
+                                    <div className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-2 text-xs sm:text-sm">
+                                        {myShips.map(ship => {
+                                            const hits = opponentAttacks.filter(attack =>
+                                                attack.isHit && ship.positions.some(pos => pos.row === attack.row && pos.col === attack.col)
+                                            ).length;
+                                            const isSunk = hits >= ship.size;
 
-                                                return (
-                                                    <div key={ship.id} className={`flex justify-between items-center p-2 rounded-lg border transition-all ${
-                                                        isSunk ? 'bg-red-500/10 border-red-500/30' : 'bg-cyan/5 border-cyan/20'
-                                                    }`}>
-                                                        <span className={`font-semibold ${isSunk ? 'text-red-400 line-through' : 'text-accent'}`}>
-                                                            🚢 {ship.name} <span className="text-muted text-xs">({ship.size})</span>
-                                                        </span>
-                                                        <div className="flex gap-1">
-                                                            {Array.from({ length: ship.size }).map((_, i) => (
-                                                                <span key={i} className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full border transition-all ${
-                                                                    i < hits 
-                                                                        ? 'bg-red-500 border-red-400 shadow-lg shadow-red-500/50' 
-                                                                        : 'bg-green-500 border-green-400 shadow-sm shadow-green-500/30'
-                                                                }`}></span>
-                                                            ))}
-                                                        </div>
+                                            return (
+                                                <div key={ship.id} className={`flex justify-between items-center p-2 rounded-lg border transition-all ${
+                                                    isSunk ? 'bg-red-500/10 border-red-500/30' : 'bg-cyan/5 border-cyan/20'
+                                                }`}>
+                                                    <span className={`font-semibold ${isSunk ? 'text-red-400 line-through' : 'text-accent'}`}>
+                                                        {ship.name} <span className="text-muted text-xs">({ship.size})</span>
+                                                    </span>
+                                                    <div className="flex gap-1">
+                                                        {Array.from({ length: ship.size }).map((_, i) => (
+                                                            <span key={i} className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full border transition-all ${
+                                                                i < hits 
+                                                                    ? 'bg-red-500 border-red-400 shadow-lg shadow-red-500/50' 
+                                                                    : 'bg-green-500 border-green-400 shadow-sm shadow-green-500/30'
+                                                            }`}></span>
+                                                        ))}
                                                     </div>
-                                                );
-                                            })}
+                                                </div>
+                                            );
+                                        })}
                                         </div>
                                     </details>
                                 </div>
@@ -1211,17 +1197,15 @@ export default function Game() {
                             {/* Opponent's Board */}
                             <div className="space-y-3 order-1 lg:order-2">
                                 <div className="flex items-center justify-between">
-                                    <h2 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-400 flex items-center gap-2">
-                                        <span>💣</span>
-                                        <span className="hidden sm:inline">Enemy Waters</span>
-                                        <span className="sm:hidden">Enemy</span>
+                                    <h2 className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-400">
+                                        Enemy waters
                                     </h2>
                                     <div className={`px-3 py-1 rounded-full text-xs sm:text-sm font-bold border ${
                                         isMyTurn 
                                             ? 'bg-green-500/20 text-green-400 border-green-500/50 animate-pulse' 
                                             : 'bg-red-500/20 text-red-400 border-red-500/50'
                                     }`}>
-                                        {isMyTurn ? '💣 FIRE!' : '⏳ WAIT'}
+                                        {isMyTurn ? 'Your move' : 'Waiting'}
                                     </div>
                                 </div>
 
@@ -1241,43 +1225,43 @@ export default function Game() {
                                     </div>
                                 </div>
 
-                                {/* Attack stats */}
-                                <div className="bg-card/40 backdrop-blur-sm rounded-xl border border-red-400/30 p-3 sm:p-4 shadow-lg">
-                                    <h3 className="text-base sm:text-lg font-bold text-red-400 mb-3 flex items-center gap-2">
-                                        <span>📊</span> Attack Stats
-                                    </h3>
-                                    <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                                        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-2 sm:p-3 text-center">
-                                            <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Hits</div>
-                                            <div className="text-xl sm:text-3xl font-black text-red-400">
-                                                {myAttacks.filter(a => a.isHit).length}
-                                            </div>
+                            {/* Attack stats */}
+                            <div className="bg-card/40 backdrop-blur-sm rounded-xl border border-red-400/30 p-3 sm:p-4 shadow-lg">
+                                <h3 className="text-base sm:text-lg font-bold text-red-400 mb-3">
+                                    Attack stats
+                                </h3>
+                                <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                                    <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-2 sm:p-3 text-center">
+                                        <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Hits</div>
+                                        <div className="text-xl sm:text-3xl font-black text-red-400">
+                                            {myAttacks.filter(a => a.isHit).length}
                                         </div>
-                                        <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2 sm:p-3 text-center">
-                                            <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Misses</div>
-                                            <div className="text-xl sm:text-3xl font-black text-blue-400">
-                                                {myAttacks.filter(a => !a.isHit).length}
-                                            </div>
+                                    </div>
+                                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-2 sm:p-3 text-center">
+                                        <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Misses</div>
+                                        <div className="text-xl sm:text-3xl font-black text-blue-400">
+                                            {myAttacks.filter(a => !a.isHit).length}
                                         </div>
-                                        <div className="bg-accent/10 border border-accent/30 rounded-lg p-2 sm:p-3 text-center">
-                                            <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Accuracy</div>
-                                            <div className="text-xl sm:text-3xl font-black text-accent">
-                                                {myAttacks.length > 0
-                                                    ? Math.round((myAttacks.filter(a => a.isHit).length / myAttacks.length) * 100)
-                                                    : 0}%
-                                            </div>
+                                    </div>
+                                    <div className="bg-accent/10 border border-accent/30 rounded-lg p-2 sm:p-3 text-center">
+                                        <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Accuracy</div>
+                                        <div className="text-xl sm:text-3xl font-black text-accent">
+                                            {myAttacks.length > 0
+                                                ? Math.round((myAttacks.filter(a => a.isHit).length / myAttacks.length) * 100)
+                                                : 0}%
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                            </div>
                         </div>
 
-                        {/* Game controls - Mobile optimized */}
-                        <div className="bg-card/30 backdrop-blur-sm rounded-xl border border-accent/30 p-3 sm:p-4 shadow-lg">
-                            <div className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
-                                <div className="text-center sm:text-left text-xs sm:text-sm text-muted w-full sm:w-auto">
-                                    <span className="hidden sm:inline">💡 <span className="font-semibold">Tip:</span> Click enemy waters to attack. Drag to rotate camera.</span>
-                                    <span className="sm:hidden">💡 Tap to attack • Drag to rotate</span>
+                {/* Game controls - Mobile optimized */}
+                <div className="bg-card/30 backdrop-blur-sm rounded-xl border border-accent/30 p-3 sm:p-4 shadow-lg">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
+                        <div className="text-center sm:text-left text-xs sm:text-sm text-muted w-full sm:w-auto">
+                            <span className="hidden sm:inline"><span className="font-semibold">Tip:</span> Click enemy waters to attack. Drag to rotate camera.</span>
+                            <span className="sm:hidden"><span className="font-semibold">Tip:</span> Tap to attack • Drag to rotate</span>
                                 </div>
                                 <button
                                     onClick={handleLeaveToLobby}
@@ -1285,27 +1269,10 @@ export default function Game() {
                                 >
                                     Leave Game
                                 </button>
-                            </div>
-                        </div>
                     </div>
-                )}
-
-                {/* Game Controls */}
-                {(gamePhase === 'playing' || gamePhase === 'ready') && (
-                    <div className="mt-6 bg-slate-800/50 rounded-lg p-4 border border-cyan-500/30">
-                        <div className="flex justify-between items-center">
-                            <div className="text-gray-300 text-sm">
-                                💡 <span className="font-semibold">Tip:</span> Click on enemy waters to attack. Rotate the camera using mouse drag.
-                            </div>
-                            <button
-                                onClick={handleLeaveToLobby}
-                                className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg border border-red-500/50 transition-all"
-                            >
-                                Leave Game
-                            </button>
-                        </div>
-                    </div>
-                )}
+                </div>
+            </div>
+        )}
 
                 {/* Leave button for waiting phase */}
                 {gamePhase === 'waiting' && (

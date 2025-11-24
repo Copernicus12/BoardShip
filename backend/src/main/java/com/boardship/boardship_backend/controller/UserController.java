@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -22,21 +23,76 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final MatchRepository matchRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public record UpdateUsernameRequest(String username) {}
+    public record UpdatePasswordRequest(String currentPassword, String newPassword) {}
+    public record UpdateThemeRequest(String theme) {}
+    private User getAuthenticatedUser(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthenticated");
+        }
+        String email = authentication.getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+    }
+
+    private User sanitize(User user) {
+        user.setPassword(null);
+        return user;
+    }
 
     @GetMapping("/me")
     public ResponseEntity<User> getCurrentUser(Authentication authentication) {
-        if (authentication == null || !authentication.isAuthenticated()) {
-            return ResponseEntity.status(401).build();
+        try {
+            User user = getAuthenticatedUser(authentication);
+            return ResponseEntity.ok(sanitize(user));
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).build();
+        }
+    }
+
+    @PatchMapping("/me/username")
+    public ResponseEntity<User> updateUsername(@RequestBody UpdateUsernameRequest request, Authentication authentication) {
+        User user = getAuthenticatedUser(authentication);
+        String newUsername = request.username() != null ? request.username().trim() : "";
+        if (newUsername.length() < 3 || newUsername.length() > 30) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Username must be between 3 and 30 characters");
+        }
+        if (!newUsername.equalsIgnoreCase(user.getUsername()) && userRepository.existsByUsernameIgnoreCase(newUsername)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username already taken");
+        }
+        user.setUsername(newUsername);
+        return ResponseEntity.ok(sanitize(userRepository.save(user)));
+    }
+
+    @PatchMapping("/me/password")
+    public ResponseEntity<Void> updatePassword(@RequestBody UpdatePasswordRequest request, Authentication authentication) {
+        User user = getAuthenticatedUser(authentication);
+        String current = request.currentPassword() == null ? "" : request.currentPassword();
+        String next = request.newPassword() == null ? "" : request.newPassword();
+
+        if (next.length() < 6) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be at least 6 characters");
+        }
+        if (!passwordEncoder.matches(current, user.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Current password is incorrect");
         }
 
-        String email = authentication.getName();
-        return userRepository.findByEmail(email)
-                .map(user -> {
-                    // Don't send password to client
-                    user.setPassword(null);
-                    return ResponseEntity.ok(user);
-                })
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        user.setPassword(passwordEncoder.encode(next));
+        userRepository.save(user);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/me/theme")
+    public ResponseEntity<User> updateTheme(@RequestBody UpdateThemeRequest request, Authentication authentication) {
+        User user = getAuthenticatedUser(authentication);
+        String theme = request.theme() == null ? "" : request.theme().toLowerCase();
+        if (!theme.equals("dark") && !theme.equals("light")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Theme must be 'dark' or 'light'");
+        }
+        user.setThemePreference(theme);
+        return ResponseEntity.ok(sanitize(userRepository.save(user)));
     }
 
     @GetMapping("/online")

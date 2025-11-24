@@ -201,104 +201,116 @@ export default function ShipPlacement({ onPlacementComplete }: ShipPlacementProp
     const allShipsPlaced = ships.every(s => s.placed);
 
     return (
-        <div className="space-y-4">
-            <div className="bg-slate-800/50 rounded-lg p-4 border border-cyan-500/30">
-                <h3 className="text-xl font-bold text-cyan-400 mb-3">📍 Place Your Fleet</h3>
+        <div className="relative overflow-hidden rounded-2xl border border-accent bg-card/80 p-5 sm:p-6">
+            <div className="pointer-events-none absolute inset-0 -z-10">
+                <div className="absolute -left-10 -top-8 h-48 w-48 bg-neon/10 blur-3xl" />
+                <div className="absolute -right-10 bottom-0 h-56 w-56 bg-cyan/10 blur-3xl" />
+                <div className="absolute inset-x-6 top-10 h-px bg-gradient-to-r from-transparent via-cyan/40 to-transparent" />
+            </div>
 
-                {/* Ship list */}
-                <div className="space-y-2 mb-4">
-                    {ships.map(ship => (
-                        <div
-                            key={ship.id}
-                            className={`flex items-center justify-between p-2 rounded cursor-pointer transition-all ${
-                                ship.placed
-                                    ? 'bg-green-500/20 border border-green-500/50'
-                                    : selectedShip?.id === ship.id
-                                    ? 'bg-cyan-500/30 border border-cyan-500'
-                                    : 'bg-slate-700/50 border border-slate-600 hover:border-cyan-500/50'
-                            }`}
-                            onClick={() => !ship.placed && setSelectedShip(ship)}
+            <div className="relative z-10 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Phase</p>
+                        <h3 className="text-2xl font-bold text-neon">Place your fleet</h3>
+                        <p className="text-sm text-muted">Select a ship, hover to preview, click to lock it in.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={toggleOrientation}
+                            disabled={!selectedShip}
+                            className="flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-accent bg-navy/60 hover:border-neon hover:text-neon transition disabled:opacity-60"
                         >
-                            <div className="flex items-center gap-2">
-                                <span className="text-lg">🚢</span>
-                                <span className="font-semibold text-white">{ship.name}</span>
-                                <span className="text-gray-400 text-sm">({ship.size} cells)</span>
-                            </div>
-                            {ship.placed ? (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        removeShip(ship.id);
-                                    }}
-                                    className="text-red-400 hover:text-red-300 text-sm px-2 py-1 rounded bg-red-500/20 hover:bg-red-500/30"
-                                >
-                                    Remove
-                                </button>
-                            ) : selectedShip?.id === ship.id ? (
-                                <span className="text-cyan-400 text-sm">← Selected</span>
-                            ) : null}
-                        </div>
-                    ))}
+                            <RotateCw size={16} />
+                            {orientation === 'horizontal' ? 'Horizontal' : 'Vertical'}
+                        </button>
+                        <button
+                            onClick={randomPlacement}
+                            className="rounded-lg border border-neon/40 bg-neon/10 px-4 py-2 text-neon font-semibold hover:opacity-90 transition"
+                        >
+                            Auto place
+                        </button>
+                    </div>
                 </div>
 
-                {/* Controls */}
-                <div className="flex gap-2 mb-4">
-                    <button
-                        onClick={toggleOrientation}
-                        disabled={!selectedShip}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 disabled:bg-slate-700/50 disabled:text-gray-500 text-purple-400 rounded border border-purple-500/50 disabled:border-slate-600 transition-all"
-                    >
-                        <RotateCw size={18} />
-                        {orientation === 'horizontal' ? 'Horizontal' : 'Vertical'}
-                    </button>
-
-                    <button
-                        onClick={randomPlacement}
-                        className="flex-1 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 rounded border border-blue-500/50 transition-all"
-                    >
-                        🎲 Random
-                    </button>
-                </div>
-
-                {/* Grid */}
-                <div className="grid grid-cols-10 gap-1 mb-4 bg-slate-900/50 p-2 rounded">
-                    {Array.from({ length: boardSize * boardSize }).map((_, index) => {
-                        const row = Math.floor(index / boardSize);
-                        const col = index % boardSize;
-
-                        const isOccupied = isCellOccupied(row, col);
-                        const isHovered = hoveredCells.some(cell => cell.row === row && cell.col === col);
-
-                        return (
+                <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
+                    <div className="space-y-3">
+                        {ships.map(ship => (
                             <div
-                                key={index}
-                                className={`aspect-square rounded cursor-pointer transition-all border ${
-                                    isOccupied
-                                        ? 'bg-green-500/40 border-green-500'
-                                        : isHovered
-                                        ? canPlace
-                                            ? 'bg-cyan-500/40 border-cyan-500'
-                                            : 'bg-red-500/40 border-red-500'
-                                        : 'bg-blue-900/30 border-blue-800 hover:bg-blue-700/40'
+                                key={ship.id}
+                                className={`rounded-xl border px-3 py-2.5 flex items-center justify-between cursor-pointer transition ${
+                                    ship.placed
+                                        ? 'border-green-500/50 bg-green-500/10 text-green-200'
+                                        : selectedShip?.id === ship.id
+                                            ? 'border-neon bg-neon/10 text-neon'
+                                            : 'border-accent bg-navy/50 text-accent hover:border-neon/40'
                                 }`}
-                                onMouseEnter={() => handleCellHover(row, col)}
-                                onMouseLeave={() => setHoveredCells([])}
-                                onClick={() => handleCellClick(row, col)}
-                            />
-                        );
-                    })}
-                </div>
+                                onClick={() => !ship.placed && setSelectedShip(ship)}
+                            >
+                                <div>
+                                    <p className="text-sm font-semibold">{ship.name}</p>
+                                    <p className="text-xs text-muted">{ship.size} cells</p>
+                                </div>
+                                {ship.placed ? (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            removeShip(ship.id);
+                                        }}
+                                        className="text-xs font-semibold rounded-md px-2 py-1 border border-red-400/60 text-red-200 hover:bg-red-500/10"
+                                    >
+                                        Remove
+                                    </button>
+                                ) : selectedShip?.id === ship.id ? (
+                                    <span className="text-[11px] uppercase tracking-[0.15em] font-semibold">Selected</span>
+                                ) : (
+                                    <span className="text-[11px] uppercase tracking-[0.15em] text-muted">Tap to place</span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
 
-                {/* Complete button */}
-                <button
-                    onClick={handleComplete}
-                    disabled={!allShipsPlaced}
-                    className="w-full px-6 py-3 bg-green-500/20 hover:bg-green-500/30 disabled:bg-slate-700/50 disabled:text-gray-500 text-green-400 font-bold rounded border border-green-500/50 disabled:border-slate-600 transition-all"
-                >
-                    {allShipsPlaced ? '✓ Ready to Battle!' : `Place ${ships.filter(s => !s.placed).length} more ship(s)`}
-                </button>
+                    <div className="space-y-3">
+                        <div className="rounded-2xl border border-accent bg-navy/60 p-3">
+                            <div className="grid grid-cols-10 gap-1 bg-card/50 p-2 rounded-lg">
+                                {Array.from({ length: boardSize * boardSize }).map((_, index) => {
+                                    const row = Math.floor(index / boardSize);
+                                    const col = index % boardSize;
+
+                                    const occupied = isCellOccupied(row, col);
+                                    const hovered = hoveredCells.some(cell => cell.row === row && cell.col === col);
+
+                                    return (
+                                        <div
+                                            key={index}
+                                            className={`aspect-square rounded cursor-pointer border transition ${
+                                                occupied
+                                                    ? 'bg-neon/40 border-neon/70'
+                                                    : hovered
+                                                        ? canPlace
+                                                            ? 'bg-cyan/30 border-cyan/60'
+                                                            : 'bg-red-500/30 border-red-400/60'
+                                                        : 'bg-card/40 border-accent/40 hover:border-neon/30'
+                                            }`}
+                                            onMouseEnter={() => handleCellHover(row, col)}
+                                            onMouseLeave={() => setHoveredCells([])}
+                                            onClick={() => handleCellClick(row, col)}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={handleComplete}
+                            disabled={!allShipsPlaced}
+                            className="w-full rounded-xl bg-neon text-navy font-semibold py-3 shadow-glow hover:opacity-95 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                        >
+                            {allShipsPlaced ? 'Ready to battle' : `Place ${ships.filter(s => !s.placed).length} ship(s)`}
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );
 }
-

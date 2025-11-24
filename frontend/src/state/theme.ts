@@ -14,7 +14,7 @@ const useTheme = create<ThemeState>()(
         (set) => ({
             theme: 'dark',
             setTheme: (t: Theme) => set({ theme: t }),
-            toggle: () => set((state: any) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
+            toggle: () => set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
         }),
         { name: 'boardship-theme' }
     )
