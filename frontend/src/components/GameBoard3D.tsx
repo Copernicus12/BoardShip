@@ -45,11 +45,11 @@ function WaterCell({
 
     const getColor = () => {
         switch (state) {
-            case 'hit': return '#ff4444';
-            case 'miss': return '#4444ff';
-            case 'sunk': return '#aa0000';
-            case 'ship': return '#555555';
-            default: return isPending ? '#c28a00' : (isHovered ? '#2a7a9a' : '#1a5a7a');
+            case 'hit': return '#ff5b5b';
+            case 'miss': return '#4fa3ff';
+            case 'sunk': return '#d63b3b';
+            case 'ship': return '#1f3348';
+            default: return isPending ? '#f6c744' : (isHovered ? '#1bb3e6' : '#0f6b92');
         }
     };
 
@@ -75,8 +75,8 @@ function WaterCell({
             <boxGeometry args={[0.9, 0.15, 0.9]} />
             <meshStandardMaterial
                 color={getColor()}
-                metalness={0.4}
-                roughness={0.6}
+                metalness={0.55}
+                roughness={0.4}
                 emissive={state === 'hit' || state === 'sunk' ? '#ff0000' : '#000000'}
                 emissiveIntensity={state === 'hit' || state === 'sunk' ? 0.3 : 0}
             />
@@ -367,10 +367,10 @@ function BoardGrid({ isPlayerBoard, size = 10, onCellClick, initialShips, isClic
                 args={[size, size]}
                 cellSize={1}
                 cellThickness={0.5}
-                cellColor="#ffffff"
+                cellColor="#0b6c95"
                 sectionSize={size}
                 sectionThickness={1}
-                sectionColor="#4a9aba"
+                sectionColor="#4ed0ff"
                 fadeDistance={50}
                 fadeStrength={1}
                 position={[0, -0.01, 0]}
@@ -398,27 +398,51 @@ export default function GameBoard3D({
     pendingAttacks?: Array<{row: number, col: number}>;
 }) {
     return (
-        <div className="w-full h-full rounded-lg overflow-hidden">
-            <Canvas shadows>
+        <div className="w-full h-full rounded-lg overflow-hidden bg-gradient-to-br from-[#071425] via-[#06101e] to-[#050b18]">
+            <Canvas shadows dpr={[1, 1.75]}>
                 <PerspectiveCamera makeDefault position={[0, 15, 15]} />
 
+                {/* Atmosphere */}
+                <fog attach="fog" args={['#041226', 18, 45]} />
+
                 {/* Lighting */}
-                <ambientLight intensity={0.4} />
+                <ambientLight intensity={0.35} color="#7ad7ff" />
+                <hemisphereLight color="#82d9ff" groundColor="#0a1222" intensity={0.45} />
                 <directionalLight
                     position={[10, 10, 5]}
                     intensity={1}
                     castShadow
                 />
+                <spotLight
+                    position={[0, 18, 8]}
+                    angle={0.4}
+                    penumbra={0.7}
+                    intensity={0.7}
+                    color="#5bd5ff"
+                    castShadow
+                />
                 <pointLight position={[-10, 10, -10]} intensity={0.5} color="#4a9aba" />
-                <pointLight position={[10, 5, 10]} intensity={0.3} color="#1a5a7a" />
+                <pointLight position={[10, 5, 10]} intensity={0.4} color="#1a5a7a" />
 
                 {/* Ocean/Water base */}
                 <mesh position={[0, -0.5, 0]} receiveShadow>
-                    <boxGeometry args={[20, 0.5, 20]} />
+                    <boxGeometry args={[22, 0.5, 22]} />
                     <meshStandardMaterial
-                        color="#0a3a5a"
-                        metalness={0.8}
-                        roughness={0.2}
+                        color="#0a2f4a"
+                        emissive="#0c4f72"
+                        emissiveIntensity={0.25}
+                        metalness={0.95}
+                        roughness={0.18}
+                    />
+                </mesh>
+                <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.24, 0]} receiveShadow>
+                    <planeGeometry args={[28, 28]} />
+                    <meshBasicMaterial
+                        color="#5bd8ff"
+                        transparent
+                        opacity={0.08}
+                        blending={THREE.AdditiveBlending}
+                        side={THREE.DoubleSide}
                     />
                 </mesh>
 

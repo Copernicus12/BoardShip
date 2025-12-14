@@ -756,58 +756,99 @@ export default function Game() {
         // Don't manually change turn - wait for backend TURN_CHANGE message
     };
 
+    const isWin = winner === user?.id;
+    const outcome = {
+        gradient: isWin
+            ? 'from-[#0c1f2a] via-[#0a1623] to-[#091221]'
+            : 'from-[#1c0f17] via-[#150d18] to-[#0b0f1b]',
+        border: isWin ? 'border-emerald-400/50' : 'border-rose-400/50',
+        shadow: isWin ? 'shadow-emerald-500/30' : 'shadow-rose-500/30',
+        title: isWin ? 'text-emerald-300' : 'text-rose-300',
+        badge: isWin ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-200' : 'bg-rose-500/15 border-rose-400/40 text-rose-200',
+        statBorder: isWin ? 'border-emerald-400/25' : 'border-rose-400/25',
+        statAccent: isWin ? 'text-emerald-300' : 'text-rose-300',
+        button: isWin
+            ? 'bg-gradient-to-r from-emerald-400 to-cyan-400 text-navy hover:brightness-110'
+            : 'bg-gradient-to-r from-rose-400 to-orange-400 text-navy hover:brightness-110',
+    };
+
     return (
-        <div className="min-h-screen bg-[#0b1220] p-3 sm:p-6">
-            <div className="max-w-7xl mx-auto">
+        <div className="min-h-screen bg-gradient-to-br from-[#050f1f] via-[#081a30] to-[#040915] p-3 sm:p-6 text-accent relative overflow-hidden">
+            <div className="pointer-events-none absolute inset-0">
+                <div className="absolute -left-16 -top-16 h-80 w-80 bg-[radial-gradient(circle_at_center,_rgba(0,180,216,0.16),_transparent_55%)] blur-3xl" />
+                <div className="absolute -right-20 top-10 h-96 w-96 bg-[radial-gradient(circle_at_center,_rgba(72,202,228,0.14),_transparent_55%)] blur-3xl" />
+                <div className="absolute inset-x-10 top-24 h-px bg-gradient-to-r from-transparent via-cyan/30 to-transparent" />
+            </div>
+            <div className="max-w-7xl mx-auto relative z-10">
                 {/* Header */}
-                <div className="mb-4 sm:mb-6">
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon via-cyan to-accent mb-2">
-                        Battleship Arena
-                    </h1>
-                    <div className="flex flex-wrap gap-2 sm:gap-3 items-center text-xs sm:text-sm">
-                        <span className={`px-2 sm:px-3 py-1 rounded-full font-semibold border backdrop-blur-sm transition-all duration-300 ${
-                            gamePhase === 'waiting' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50' :
-                            gamePhase === 'placement' ? 'bg-blue-500/20 text-blue-300 border-blue-500/50' :
-                            gamePhase === 'ready' ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 animate-pulse' :
-                            gamePhase === 'finished' ? (winner === user?.id ? 'bg-green-500/20 text-green-300 border-green-500/50' : 'bg-red-500/20 text-red-300 border-red-500/50') :
-                            isMyTurn ? 'bg-green-500/20 text-green-300 border-green-500/50 animate-pulse' : 'bg-red-500/20 text-red-300 border-red-500/50'
-                        }`}>
-                            {gamePhase === 'waiting' && 'Locked in - waiting'}
-                            {gamePhase === 'placement' && 'Placing ships'}
-                            {gamePhase === 'ready' && 'Ready'}
-                            {gamePhase === 'playing' && (isMyTurn ? 'Your turn' : 'Opponent turn')}
-                            {gamePhase === 'finished' && (winner === user?.id ? 'Victory' : 'Defeat')}
-                        </span>
-                        <span className="px-2 sm:px-3 py-1 rounded-full bg-accent/10 border border-accent/30 text-accent font-semibold">
-                            {opponentConnected ? 'Players 2/2' : 'Players 1/2'}
-                        </span>
-                        <span className={`px-2 sm:px-3 py-1 rounded-full font-semibold border ${
-                            gameMode === 'speed' ? 'bg-orange-500/20 text-orange-200 border-orange-500/40' :
-                            gameMode === 'ranked' ? 'bg-purple-500/20 text-purple-200 border-purple-500/40' :
-                            'bg-blue-500/20 text-blue-200 border-blue-500/40'
-                        }`}>
-                            {gameMode === 'speed' && 'Speed'}
-                            {gameMode === 'ranked' && 'Ranked'}
-                            {gameMode === 'classic' && 'Classic'}
-                        </span>
-                        {gameMode === 'speed' && gamePhase === 'playing' && turnTimeLimit > 0 && (
-                            <span className={`px-2 sm:px-3 py-1 rounded-full font-bold border transition-all duration-300 ${
-                                isMyTurn ? (
-                                    turnTimeRemaining <= 1 ? 'bg-red-500/30 text-red-300 border-red-500/50 animate-pulse' :
-                                    turnTimeRemaining <= 2 ? 'bg-orange-500/30 text-orange-200 border-orange-500/50' :
-                                    'bg-green-500/20 text-green-200 border-green-500/50'
-                                ) : (
-                                    'bg-blue-500/20 text-blue-200 border-blue-500/50'
-                                )
+                <div className="mb-4 sm:mb-6 relative overflow-hidden rounded-3xl border border-accent/25 bg-gradient-to-br from-[#0c1a2d]/90 via-[#0a1728]/90 to-[#081120]/90 p-4 sm:p-6 shadow-[0_25px_80px_rgba(0,0,0,0.35)]">
+                    <div className="pointer-events-none absolute inset-0">
+                        <div className="absolute -left-10 -bottom-10 h-40 w-40 bg-[radial-gradient(circle_at_center,_rgba(0,180,216,0.12),_transparent_55%)] blur-2xl" />
+                        <div className="absolute -right-6 -top-12 h-48 w-48 bg-[radial-gradient(circle_at_center,_rgba(72,202,228,0.12),_transparent_55%)] blur-2xl" />
+                        <div className="absolute inset-x-0 top-6 h-px bg-gradient-to-r from-transparent via-neon/40 to-transparent" />
+                    </div>
+                    <div className="relative z-10 flex flex-col gap-3">
+                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon via-cyan to-accent">
+                                Battleship Arena
+                            </h1>
+                            <div className="flex items-center gap-2">
+                                <span className="px-3 py-1 rounded-full text-[11px] font-semibold border border-accent/40 bg-card/70 text-muted uppercase tracking-[0.18em]">
+                                    Naval combat
+                                </span>
+                                <span className="px-3 py-1 rounded-full text-[11px] font-semibold border border-neon/50 bg-neon/10 text-neon uppercase tracking-[0.18em]">
+                                    Live 3D
+                                </span>
+                            </div>
+                        </div>
+                        <p className="text-sm text-muted max-w-3xl">
+                            Glassy HUD with ocean vibes: track turns, timer, and status while your boards float on a neon sea.
+                        </p>
+                        <div className="flex flex-wrap gap-2 sm:gap-3 items-center text-xs sm:text-sm">
+                            <span className={`px-2 sm:px-3 py-1 rounded-full font-semibold border backdrop-blur-sm transition-all duration-300 ${
+                                gamePhase === 'waiting' ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/50' :
+                                gamePhase === 'placement' ? 'bg-blue-500/20 text-blue-300 border-blue-500/50' :
+                                gamePhase === 'ready' ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 animate-pulse' :
+                                gamePhase === 'finished' ? (winner === user?.id ? 'bg-green-500/20 text-green-300 border-green-500/50' : 'bg-red-500/20 text-red-300 border-red-500/50') :
+                                isMyTurn ? 'bg-green-500/20 text-green-300 border-green-500/50 animate-pulse' : 'bg-red-500/20 text-red-300 border-red-500/50'
                             }`}>
-                                {turnTimeRemaining}s
+                                {gamePhase === 'waiting' && 'Locked in - waiting'}
+                                {gamePhase === 'placement' && 'Placing ships'}
+                                {gamePhase === 'ready' && 'Ready'}
+                                {gamePhase === 'playing' && (isMyTurn ? 'Your turn' : 'Opponent turn')}
+                                {gamePhase === 'finished' && (winner === user?.id ? 'Victory' : 'Defeat')}
                             </span>
-                        )}
-                        {isHost && (
-                            <span className="px-2 sm:px-3 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/50 font-semibold">
-                                Host
+                            <span className="px-2 sm:px-3 py-1 rounded-full bg-accent/10 border border-accent/30 text-accent font-semibold">
+                                {opponentConnected ? 'Players 2/2' : 'Players 1/2'}
                             </span>
-                        )}
+                            <span className={`px-2 sm:px-3 py-1 rounded-full font-semibold border ${
+                                gameMode === 'speed' ? 'bg-orange-500/20 text-orange-200 border-orange-500/40' :
+                                gameMode === 'ranked' ? 'bg-purple-500/20 text-purple-200 border-purple-500/40' :
+                                'bg-blue-500/20 text-blue-200 border-blue-500/40'
+                            }`}>
+                                {gameMode === 'speed' && 'Speed'}
+                                {gameMode === 'ranked' && 'Ranked'}
+                                {gameMode === 'classic' && 'Classic'}
+                            </span>
+                            {gameMode === 'speed' && gamePhase === 'playing' && turnTimeLimit > 0 && (
+                                <span className={`px-2 sm:px-3 py-1 rounded-full font-bold border transition-all duration-300 ${
+                                    isMyTurn ? (
+                                        turnTimeRemaining <= 1 ? 'bg-red-500/30 text-red-300 border-red-500/50 animate-pulse' :
+                                        turnTimeRemaining <= 2 ? 'bg-orange-500/30 text-orange-200 border-orange-500/50' :
+                                        'bg-green-500/20 text-green-200 border-green-500/50'
+                                    ) : (
+                                        'bg-blue-500/20 text-blue-200 border-blue-500/50'
+                                    )
+                                }`}>
+                                    {turnTimeRemaining}s
+                                </span>
+                            )}
+                            {isHost && (
+                                <span className="px-2 sm:px-3 py-1 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/50 font-semibold">
+                                    Host
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -987,90 +1028,50 @@ export default function Game() {
                     </div>
                 )}
 
-                {/* Finished Phase - Victory/Defeat Screen */}
+                {/* Finished Phase - Victory/Defeat Modal */}
                 {gamePhase === 'finished' && (
-                    <div className="relative overflow-hidden">
-                        {/* Background gradient effects */}
-                        <div className={`absolute inset-0 blur-3xl ${
-                            winner === user?.id 
-                                ? 'bg-gradient-to-br from-green-500/10 via-transparent to-green-500/10' 
-                                : 'bg-gradient-to-br from-red-500/10 via-transparent to-red-500/10'
-                        }`}></div>
-                        <div className={`absolute top-0 left-1/4 w-96 h-96 rounded-full blur-3xl animate-pulse ${
-                            winner === user?.id ? 'bg-green-500/20' : 'bg-red-500/20'
-                        }`}></div>
-
-                        <div className={`relative rounded-2xl sm:rounded-3xl p-6 sm:p-12 md:p-16 border-2 text-center shadow-2xl backdrop-blur-xl ${
-                            winner === user?.id 
-                                ? 'bg-green-900/20 border-green-500/50 shadow-green-500/20' 
-                                : 'bg-red-900/20 border-red-500/50 shadow-red-500/20'
-                        }`}>
-                            <div className="relative inline-block mb-6 sm:mb-8">
-                                <div className={`h-16 w-16 sm:h-20 sm:w-20 rounded-2xl border-2 ${
-                                    winner === user?.id ? 'border-green-400/70' : 'border-red-400/70'
-                                } bg-gradient-to-br ${
-                                    winner === user?.id ? 'from-green-500/30 to-yellow-400/20' : 'from-red-500/30 to-orange-400/20'
-                                } shadow-lg`} />
-                                <div className={`absolute -inset-4 rounded-3xl blur-2xl opacity-30 ${
-                                    winner === user?.id ? 'bg-green-500/30' : 'bg-red-500/30'
-                                }`}></div>
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center px-4 py-6 md:pl-[18rem] md:pr-10 bg-[#050a12]/90 backdrop-blur-md">
+                        <div className={`relative w-full max-w-4xl lg:max-w-5xl rounded-3xl border ${outcome.border} bg-gradient-to-br ${outcome.gradient} shadow-[0_30px_90px_rgba(0,0,0,0.55)] backdrop-blur-xl p-6 sm:p-8`}>
+                            <div className="flex items-start justify-between gap-4 mb-6">
+                                <div className="space-y-2">
+                                    <p className={`inline-flex px-3 py-1 rounded-full text-[11px] font-semibold border ${outcome.badge} uppercase tracking-[0.18em]`}>
+                                        {isWin ? 'Victory' : 'Defeat'}
+                                    </p>
+                                    <h2 className={`text-3xl sm:text-4xl md:text-5xl font-black ${outcome.title}`}>
+                                        {isWin ? 'You won the battle' : 'You lost the battle'}
+                                    </h2>
+                                    <p className="text-sm sm:text-base text-muted max-w-2xl">
+                                        {winReason === 'forfeit' && gameOverMessage
+                                            ? gameOverMessage
+                                            : isWin
+                                                ? 'All enemy ships were destroyed.'
+                                                : 'Your fleet has been sunk.'}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={handleLeaveToLobby}
+                                    className="text-muted hover:text-accent text-sm transition-colors"
+                                >
+                                    Close
+                                </button>
                             </div>
 
-                            <h2 className={`text-4xl sm:text-5xl md:text-6xl font-black mb-4 sm:mb-6 ${
-                                winner === user?.id ? 'text-green-400' : 'text-red-400'
-                            }`}>
-                                {winner === user?.id ? 'VICTORY!' : 'DEFEAT'}
-                            </h2>
-
-                            <p className="text-base sm:text-lg md:text-xl text-muted mb-6 sm:mb-8 max-w-2xl mx-auto">
-                                {winReason === 'forfeit' && gameOverMessage ? (
-                                    winner === user?.id ? (
-                                        <span className="text-green-300">{gameOverMessage}</span>
-                                    ) : (
-                                        <span className="text-red-300">You left the game</span>
-                                    )
-                                ) : (
-                                    winner === user?.id
-                                        ? <span className="text-green-300">You destroyed all enemy ships.</span>
-                                        : <span className="text-red-300">All your ships were destroyed.</span>
-                                )}
-                            </p>
-
-                            {/* RP Change for Ranked Mode */}
-                            {gameMode.toLowerCase() === 'ranked' && rpChange !== null && (
-                                <div className={`inline-block mb-6 sm:mb-8 px-6 sm:px-10 py-4 sm:py-6 rounded-xl border-2 shadow-xl transition-all hover:scale-105 ${
-                                    rpChange > 0 
-                                        ? 'bg-green-500/20 border-green-500 shadow-green-500/30' 
-                                        : 'bg-red-500/20 border-red-500 shadow-red-500/30'
-                                }`}>
-                                    <div className="text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 opacity-80">
-                                        Ranking Points
-                                    </div>
-                                    <div className={`text-4xl sm:text-5xl md:text-6xl font-black ${
-                                        rpChange > 0 ? 'text-green-300' : 'text-red-300'
-                                    }`}>
-                                        {rpChange > 0 ? '+' : ''}{rpChange} RP
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Battle Stats */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 max-w-3xl mx-auto mb-6 sm:mb-8">
-                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-4 hover:border-accent/50 transition-all">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 sm:mb-8">
+                                <div className={`rounded-xl p-4 border ${outcome.statBorder} bg-white/5 backdrop-blur`}>
                                     <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Hits</div>
-                                    <div className="text-2xl sm:text-3xl font-black text-red-400">
+                                    <div className="text-2xl sm:text-3xl font-black text-emerald-300">
                                         {myAttacks.filter(a => a.isHit).length}
                                     </div>
                                 </div>
-                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-4 hover:border-accent/50 transition-all">
+                                <div className={`rounded-xl p-4 border ${outcome.statBorder} bg-white/5 backdrop-blur`}>
                                     <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Misses</div>
-                                    <div className="text-2xl sm:text-3xl font-black text-blue-400">
+                                    <div className="text-2xl sm:text-3xl font-black text-cyan-300">
                                         {myAttacks.filter(a => !a.isHit).length}
                                     </div>
                                 </div>
-                                <div className="bg-card/40 backdrop-blur-sm border border-accent/30 rounded-xl p-4 hover:border-accent/50 transition-all">
+                                <div className={`rounded-xl p-4 border ${outcome.statBorder} bg-white/5 backdrop-blur`}>
                                     <div className="text-xs sm:text-sm text-muted mb-1 font-semibold uppercase tracking-wider">Accuracy</div>
-                                    <div className="text-2xl sm:text-3xl font-black text-accent">
+                                    <div className={`text-2xl sm:text-3xl font-black ${outcome.statAccent}`}>
                                         {myAttacks.length > 0
                                             ? Math.round((myAttacks.filter(a => a.isHit).length / myAttacks.length) * 100)
                                             : 0}%
@@ -1078,11 +1079,19 @@ export default function Game() {
                                 </div>
                             </div>
 
-                            {/* Action buttons */}
-                            <div className="flex justify-center">
+                            {gameMode.toLowerCase() === 'ranked' && rpChange !== null && (
+                                <div className={`rounded-2xl border ${outcome.border} bg-white/5 backdrop-blur p-4 sm:p-5 mb-6 sm:mb-8`}>
+                                    <div className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.16em] text-muted mb-1">Ranking Points</div>
+                                    <div className={`text-3xl sm:text-4xl font-black ${outcome.statAccent}`}>
+                                        {rpChange > 0 ? '+' : ''}{rpChange} RP
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
                                 <button
                                     onClick={handleLeaveToLobby}
-                                    className="px-6 sm:px-8 py-3 sm:py-4 bg-cyan/20 hover:bg-cyan/30 text-cyan rounded-xl border-2 border-cyan/50 hover:border-cyan transition-all duration-300 text-base sm:text-lg font-bold shadow-lg hover:shadow-cyan/20 hover:scale-105"
+                                    className={`w-full sm:w-auto px-5 sm:px-7 py-3 rounded-xl border-2 border-transparent ${outcome.button} transition-all duration-300 text-base font-bold shadow-lg hover:shadow-neon/20 hover:-translate-y-0.5`}
                                 >
                                     Return to Lobby
                                 </button>
@@ -1093,7 +1102,12 @@ export default function Game() {
 
                 {/* Playing Phase - Game Boards */}
                 {gamePhase === 'playing' && (
-                    <div className="relative bg-[#0b1220] border border-accent/30 rounded-3xl p-4 sm:p-6 md:p-7 shadow-2xl shadow-accent/10 space-y-4 sm:space-y-6">
+                    <div className="relative overflow-hidden bg-gradient-to-br from-[#081629]/95 via-[#061220]/95 to-[#040d18]/95 border border-accent/25 rounded-3xl p-4 sm:p-6 md:p-7 shadow-[0_25px_80px_rgba(0,0,0,0.45)] space-y-4 sm:space-y-6">
+                        <div className="pointer-events-none absolute inset-0">
+                            <div className="absolute -left-32 top-10 h-80 w-80 bg-[radial-gradient(circle_at_center,_rgba(0,180,216,0.14),_transparent_55%)] blur-3xl" />
+                            <div className="absolute -right-24 bottom-0 h-96 w-96 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.08),_transparent_55%)] blur-3xl opacity-70" />
+                            <div className="absolute inset-x-0 top-6 h-px bg-gradient-to-r from-transparent via-cyan/30 to-transparent" />
+                        </div>
                         <div className="flex flex-wrap gap-2 sm:gap-3">
                             <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
                                 isMyTurn ? 'bg-green-500/20 text-green-200 border-green-500/50' : 'bg-red-500/20 text-red-200 border-red-500/50'
@@ -1136,8 +1150,8 @@ export default function Game() {
                                 </div>
 
                                 {/* 3D Board Container - Responsive height */}
-                                <div className="relative bg-card/30 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-cyan/30 overflow-hidden shadow-xl shadow-cyan/10 hover:border-cyan/50 transition-all duration-300">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-cyan/5 to-transparent"></div>
+                                <div className="relative bg-gradient-to-br from-[#0b2135]/85 to-[#07192d]/85 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-cyan/30 overflow-hidden shadow-xl shadow-cyan/15 hover:border-cyan/50 transition-all duration-300">
+                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(0,180,216,0.14),transparent_50%),radial-gradient(circle_at_80%_70%,rgba(72,202,228,0.12),transparent_50%)] pointer-events-none"></div>
                                     <div className="relative" style={{ height: 'clamp(300px, 50vh, 500px)' }}>
                                         <GameBoard3D
                                             isPlayerBoard={true}
@@ -1210,8 +1224,8 @@ export default function Game() {
                                 </div>
 
                                 {/* 3D Board Container - Responsive height */}
-                                <div className="relative bg-card/30 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-red-400/30 overflow-hidden shadow-xl shadow-red-400/10 hover:border-red-400/50 transition-all duration-300">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent"></div>
+                                <div className="relative bg-gradient-to-br from-[#251018]/85 to-[#1a0c14]/85 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-red-400/30 overflow-hidden shadow-xl shadow-red-400/15 hover:border-red-400/50 transition-all duration-300">
+                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(255,99,99,0.14),transparent_50%),radial-gradient(circle_at_80%_70%,rgba(255,155,122,0.12),transparent_50%)] pointer-events-none"></div>
                                     <div className="relative" style={{ height: 'clamp(300px, 50vh, 500px)' }}>
                                         <GameBoard3D
                                             isPlayerBoard={false}
