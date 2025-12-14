@@ -1,70 +1,76 @@
-import { useEffect, useState } from 'react'
-import PageContainer from '../components/PageContainer'
-import api from '../utils/api'
+import { useEffect, useRef, useState } from 'react';
+import { Award, Target, TrendingUp, Zap } from 'lucide-react';
+import PageContainer from '../components/PageContainer';
+import api from '../utils/api';
 
 type Player = {
-    username: string
-    score: number
-    rank?: string
-    icon?: string
-    wins: number
-    losses: number
-    totalGames: number
-    winRate: number
-}
+    username: string;
+    score: number;
+    rank?: string;
+    icon?: string;
+    wins: number;
+    losses: number;
+    totalGames: number;
+    winRate: number;
+};
 
 type SortBy = 'rp' | 'wins' | 'winrate';
+type Category = 'all' | 'classic' | 'ranked' | 'speed';
+
+const getWinRateColor = (value: number) => {
+    if (value >= 70) return 'text-green-400';
+    if (value >= 60) return 'text-lime-400';
+    if (value >= 50) return 'text-yellow-400';
+    if (value >= 40) return 'text-orange-400';
+    return 'text-red-400';
+};
 
 export default function Leaderboard() {
-    const [players, setPlayers] = useState<Player[]>([])
-    const [loading, setLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
-    const [sortBy, setSortBy] = useState<SortBy>('rp')
+    const [players, setPlayers] = useState<Player[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [sortBy, setSortBy] = useState<SortBy>('rp');
+    const [category, setCategory] = useState<Category>('all');
+    const [categoryOpen, setCategoryOpen] = useState(false);
+    const categoryRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
-        const abortController = new AbortController()
-        let cancelled = false
+        const abortController = new AbortController();
+        let cancelled = false;
 
         async function load() {
             try {
-                setLoading(true)
-                // Use /api/leaderboard endpoint (not just /leaderboard)
-                const res = await api.get(`/api/leaderboard?limit=100&sortBy=${sortBy}`, {
-                    signal: abortController.signal
-                })
+                setLoading(true);
+                const categoryParam = category !== 'all' ? `&category=${category}` : '';
+                const res = await api.get(`/api/leaderboard?limit=100&sortBy=${sortBy}${categoryParam}`, {
+                    signal: abortController.signal,
+                });
 
-                // Check if request was cancelled
-                if (cancelled) return
+                if (cancelled) return;
 
-                // Handle different response formats
-                let data: Player[] = []
+                let data: Player[] = [];
                 if (Array.isArray(res.data)) {
-                    data = res.data
+                    data = res.data;
                 } else if (res.data && typeof res.data === 'object') {
-                    // Backend might return { players: [...] } or similar
-                    data = res.data.players || res.data.leaderboard || []
+                    data = res.data.players || res.data.leaderboard || [];
                 }
 
-                // Ensure we have an array
                 if (!Array.isArray(data)) {
-                    console.error('Invalid leaderboard data format:', res.data)
-                    data = []
+                    console.error('Invalid leaderboard data format:', res.data);
+                    data = [];
                 }
 
-                setPlayers(data)
-                setError(null)
+                setPlayers(data);
+                setError(null);
             } catch (e: any) {
-                // Don't show error if request was just cancelled
                 if (e.name === 'CanceledError' || e.code === 'ERR_CANCELED' || cancelled) {
-                    console.log('Leaderboard request cancelled')
-                    return
+                    console.log('Leaderboard request cancelled');
+                    return;
                 }
 
-                console.error('Failed to load leaderboard:', e)
+                console.error('Failed to load leaderboard:', e);
 
-                // Only show mock data if not cancelled
                 if (!cancelled) {
-                    // fallback mock data
                     const mock: Player[] = [
                         { username: 'CaptainA', score: 3400, rank: 'Diamond', icon: '💎', wins: 85, losses: 15, totalGames: 100, winRate: 85.0 },
                         { username: 'SeaWolf', score: 2880, rank: 'Gold', icon: '🥇', wins: 72, losses: 28, totalGames: 100, winRate: 72.0 },
@@ -72,291 +78,272 @@ export default function Leaderboard() {
                         { username: 'Razor', score: 1880, rank: 'Silver', icon: '🥈', wins: 47, losses: 53, totalGames: 100, winRate: 47.0 },
                         { username: 'Gale', score: 1500, rank: 'Silver', icon: '🥈', wins: 38, losses: 42, totalGames: 80, winRate: 47.5 },
                         { username: 'Nova', score: 1200, rank: 'Silver', icon: '🥈', wins: 30, losses: 30, totalGames: 60, winRate: 50.0 },
-                    ]
-                    setPlayers(mock)
-                    setError('Failed to load leaderboard from server')
+                    ];
+                    setPlayers(mock);
+                    setError('Failed to load leaderboard from server');
                 }
             } finally {
                 if (!cancelled) {
-                    setLoading(false)
+                    setLoading(false);
                 }
             }
         }
 
-        load()
+        load();
 
         return () => {
-            cancelled = true
-            abortController.abort()
+            cancelled = true;
+            abortController.abort();
+        };
+    }, [sortBy, category]);
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (categoryRef.current && !categoryRef.current.contains(e.target as Node)) {
+                setCategoryOpen(false);
+            }
         }
-    }, [sortBy])
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const displayPlayers = Array.isArray(players) ? players : [];
+
+    const sortOptions = [
+        { key: 'rp' as SortBy, label: 'Rank Points', icon: <Award size={16} /> },
+        { key: 'wins' as SortBy, label: 'Victories', icon: <Target size={16} /> },
+        { key: 'winrate' as SortBy, label: 'Win Rate', icon: <TrendingUp size={16} /> },
+    ];
+
+    const categoryLabels: Record<Category, string> = {
+        all: 'All modes',
+        classic: 'Classic',
+        ranked: 'Ranked',
+        speed: 'Speed',
+    };
 
     return (
-        <PageContainer>
-            <div className="max-w-6xl mx-auto px-2 sm:px-6">
-                {/* Compact Hero Header */}
-                <div className="mb-4 sm:mb-8 text-center relative">
-                    <div className="absolute inset-0 bg-gradient-to-r from-neon/10 via-accent/10 to-neon/10 blur-2xl -z-10"></div>
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-neon via-accent to-neon mb-2 animate-pulse">
-                        🏆 Leaderboard
-                    </h1>
-                    <p className="text-xs sm:text-sm text-muted">Top players by performance</p>
-                </div>
-
-                {/* Compact Sorting Tabs */}
-                <div className="mb-4 sm:mb-6 flex justify-center gap-2 sm:gap-3 flex-wrap">
-                    <button
-                        onClick={() => setSortBy('rp')}
-                        className={`px-3 sm:px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-xs sm:text-sm ${
-                            sortBy === 'rp'
-                                ? 'bg-gradient-to-r from-neon to-accent text-navy shadow-lg shadow-neon/50'
-                                : 'bg-card/50 border border-accent/30 text-accent hover:border-neon hover:shadow-lg hover:shadow-neon/20'
-                        }`}
-                    >
-                        <span className="hidden sm:inline">🏆 Rank (RP)</span>
-                        <span className="sm:hidden">🏆 RP</span>
-                    </button>
-                    <button
-                        onClick={() => setSortBy('wins')}
-                        className={`px-3 sm:px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-xs sm:text-sm ${
-                            sortBy === 'wins'
-                                ? 'bg-gradient-to-r from-neon to-accent text-navy shadow-lg shadow-neon/50'
-                                : 'bg-card/50 border border-accent/30 text-accent hover:border-neon hover:shadow-lg hover:shadow-neon/20'
-                        }`}
-                    >
-                        <span className="hidden sm:inline">⚔️ Victories</span>
-                        <span className="sm:hidden">⚔️ Wins</span>
-                    </button>
-                    <button
-                        onClick={() => setSortBy('winrate')}
-                        className={`px-3 sm:px-4 py-2 rounded-lg font-semibold transition-all duration-300 text-xs sm:text-sm ${
-                            sortBy === 'winrate'
-                                ? 'bg-gradient-to-r from-neon to-accent text-navy shadow-lg shadow-neon/50'
-                                : 'bg-card/50 border border-accent/30 text-accent hover:border-neon hover:shadow-lg hover:shadow-neon/20'
-                        }`}
-                    >
-                        <span className="hidden sm:inline">📊 Win Rate</span>
-                        <span className="sm:hidden">📊 Rate</span>
-                    </button>
-                </div>
-
-                {/* Compact Top 3 Podium */}
-                {!loading && Array.isArray(players) && players.length >= 3 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-8 sm:items-end">
-                        {/* 1st Place - Show first on mobile */}
-                        <div className="text-center transform transition-all duration-300 hover:scale-105 sm:-mt-4 sm:order-2">
-                            <div className="relative bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 rounded-xl p-3 sm:p-5 mb-2 sm:mb-3 border border-yellow-300 shadow-xl shadow-yellow-500/50 overflow-hidden group">
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                                <div className="relative">
-                                    <div className="text-4xl sm:text-5xl mb-2 animate-pulse">👑</div>
-                                    <div className="text-xl sm:text-2xl font-black text-navy mb-1">{players[0]?.username || 'N/A'}</div>
-                                    {players[0]?.rank && players[0]?.icon && (
-                                        <div className="inline-flex items-center gap-1 px-2 py-1 bg-navy/30 rounded-full text-xs mb-2">
-                                            <span className="text-base sm:text-lg">{players[0].icon}</span>
-                                            <span className="font-black text-navy">{players[0].rank}</span>
-                                        </div>
-                                    )}
-                                    <div className="text-xl sm:text-2xl font-black text-navy mb-1">{players[0]?.score || 0} RP</div>
-                                    <div className="text-xs text-navy/80 font-semibold">
-                                        <span className="text-green-700">{players[0]?.wins || 0}W</span>
-                                        <span className="mx-1">-</span>
-                                        <span className="text-red-700">{players[0]?.losses || 0}L</span>
-                                        <span className="mx-1">•</span>
-                                        <span className="text-navy">{(players[0]?.winRate || 0).toFixed(1)}%</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="h-20 sm:h-28 bg-gradient-to-t from-yellow-500 to-yellow-400 border border-yellow-300 rounded-t-xl flex items-center justify-center shadow-xl shadow-yellow-500/50">
-                                <span className="text-4xl sm:text-5xl font-black text-navy">1</span>
-                            </div>
+        <PageContainer maxWidth="max-w-6xl mx-auto px-3 md:px-6">
+            <div className="rounded-3xl border border-accent/30 bg-card/70 backdrop-blur p-6 md:p-7 shadow-[0_20px_60px_rgba(0,0,0,0.35)] space-y-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="space-y-2">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neon/10 border border-neon/30 text-[11px] uppercase tracking-[0.18em] text-neon">
+                            <Zap size={14} />
+                            <span>Leaderboard</span>
                         </div>
-                        
-                        {/* 2nd Place */}
-                        <div className="text-center transform transition-all duration-300 hover:scale-105 sm:order-1">
-                            <div className="relative bg-gradient-to-br from-gray-700 via-gray-600 to-gray-700 rounded-xl p-3 sm:p-4 mb-2 sm:mb-3 border border-gray-500 shadow-lg overflow-hidden group">
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                                <div className="relative">
-                                    <div className="text-3xl sm:text-4xl mb-2">🥈</div>
-                                    <div className="text-base sm:text-lg font-black text-white mb-1">{players[1]?.username || 'N/A'}</div>
-                                    {players[1]?.rank && players[1]?.icon && (
-                                        <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 rounded-full text-xs mb-2">
-                                            <span>{players[1].icon}</span>
-                                            <span className="font-semibold text-white">{players[1].rank}</span>
-                                        </div>
-                                    )}
-                                    <div className="text-lg sm:text-xl font-black text-yellow-300 mb-1">{players[1]?.score || 0} RP</div>
-                                    <div className="text-xs text-gray-300">
-                                        <span className="text-green-400 font-bold">{players[1]?.wins || 0}W</span>
-                                        <span className="mx-1">-</span>
-                                        <span className="text-red-400 font-bold">{players[1]?.losses || 0}L</span>
-                                        <span className="mx-1">•</span>
-                                        <span className="text-yellow-300 font-bold">{(players[1]?.winRate || 0).toFixed(1)}%</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="h-16 sm:h-20 bg-gradient-to-t from-gray-700 to-gray-600 border border-gray-500 rounded-t-xl flex items-center justify-center shadow-lg">
-                                <span className="text-3xl sm:text-4xl font-black text-white">2</span>
-                            </div>
-                        </div>
-
-                        {/* 3rd Place */}
-                        <div className="text-center transform transition-all duration-300 hover:scale-105 sm:order-3">
-                            <div className="relative bg-gradient-to-br from-amber-700 via-amber-600 to-amber-700 rounded-xl p-3 sm:p-4 mb-2 sm:mb-3 border border-amber-500 shadow-lg overflow-hidden group">
-                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                                <div className="relative">
-                                    <div className="text-3xl sm:text-4xl mb-2">🥉</div>
-                                    <div className="text-base sm:text-lg font-black text-white mb-1">{players[2]?.username || 'N/A'}</div>
-                                    {players[2]?.rank && players[2]?.icon && (
-                                        <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 rounded-full text-xs mb-2">
-                                            <span>{players[2].icon}</span>
-                                            <span className="font-semibold text-white">{players[2].rank}</span>
-                                        </div>
-                                    )}
-                                    <div className="text-lg sm:text-xl font-black text-amber-300 mb-1">{players[2]?.score || 0} RP</div>
-                                    <div className="text-xs text-amber-100">
-                                        <span className="text-green-300 font-bold">{players[2]?.wins || 0}W</span>
-                                        <span className="mx-1">-</span>
-                                        <span className="text-red-300 font-bold">{players[2]?.losses || 0}L</span>
-                                        <span className="mx-1">•</span>
-                                        <span className="text-amber-200 font-bold">{(players[2]?.winRate || 0).toFixed(1)}%</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="h-14 sm:h-16 bg-gradient-to-t from-amber-700 to-amber-600 border border-amber-500 rounded-t-xl flex items-center justify-center shadow-lg">
-                                <span className="text-2xl sm:text-3xl font-black text-white">3</span>
-                            </div>
-                        </div>
+                        <h1 className="text-3xl font-bold text-accent">Live leaderboard</h1>
+                        <p className="text-sm text-muted leading-relaxed">
+                            Inspired by the reference board: two clean columns, a quick top rail, and a clear list in the same neon/minimal style.
+                        </p>
                     </div>
-                )}
-
-                {/* Compact Full Rankings Table */}
-                <div className="bg-gradient-to-b from-card to-card/50 rounded-xl border border-accent/30 overflow-hidden shadow-xl backdrop-blur-sm">
-                    <div className="bg-gradient-to-r from-accent/20 via-neon/20 to-accent/20 px-3 sm:px-6 py-3 border-b border-accent/30">
-                        <h2 className="text-base sm:text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-neon to-accent">
-                            Complete Rankings
-                        </h2>
-                    </div>
-
-                    {loading ? (
-                        <div className="p-8 sm:p-12 text-center">
-                            <div className="relative inline-block">
-                                <div className="animate-spin rounded-full h-10 sm:h-12 w-10 sm:w-12 border-4 border-accent border-t-neon"></div>
-                                <div className="absolute inset-0 animate-ping rounded-full h-10 sm:h-12 w-10 sm:w-12 border-4 border-neon opacity-20"></div>
-                            </div>
-                            <p className="text-muted mt-4 text-sm sm:text-base">Loading rankings...</p>
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-accent/20">
-                            {Array.isArray(players) && players.length > 0 ? players.map((p, i) => (
-                                <div
-                                    key={p.username}
-                                    className={`group flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 sm:px-6 py-3 sm:py-3 transition-all duration-300 hover:bg-gradient-to-r hover:from-neon/10 hover:via-accent/5 hover:to-transparent ${
-                                        i < 3 ? 'bg-gradient-to-r from-accent/5 to-transparent' : ''
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <div className="flex flex-wrap gap-2">
+                            {sortOptions.map(({ key, label, icon }) => (
+                                <button
+                                    key={key}
+                                    onClick={() => setSortBy(key)}
+                                    className={`inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold border transition-all ${
+                                        sortBy === key
+                                            ? 'border-neon/50 bg-neon/10 text-neon'
+                                            : 'border-accent/30 bg-navy/50 text-accent hover:border-neon/40 hover:text-neon'
                                     }`}
                                 >
-                                    <div className="flex items-center gap-2 sm:gap-4 flex-1 w-full sm:w-auto mb-2 sm:mb-0">
-                                        {/* Rank Badge */}
-                                        <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-lg flex items-center justify-center font-black text-base sm:text-lg shadow-md transition-all duration-300 group-hover:scale-110 flex-shrink-0 ${
-                                            i === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-navy border border-yellow-300' :
-                                            i === 1 ? 'bg-gradient-to-br from-gray-400 to-gray-600 text-white border border-gray-300' :
-                                            i === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-800 text-white border border-amber-500' :
-                                            'bg-gradient-to-br from-navy to-navy/50 text-accent border border-accent/30'
-                                        }`}>
-                                            {i === 0 ? '👑' : i + 1}
-                                        </div>
+                                    {icon}
+                                    <span>{label}</span>
+                                </button>
+                            ))}
+                        </div>
+                        <div className="relative shrink-0" ref={categoryRef}>
+                            <button
+                                onClick={() => setCategoryOpen((prev) => !prev)}
+                                className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold border border-accent/40 bg-card text-accent hover:border-neon/40 hover:text-neon transition-all"
+                            >
+                                <span className="h-2 w-2 rounded-full bg-neon shadow-glow" />
+                                <span>{categoryLabels[category]}</span>
+                            </button>
+                            {categoryOpen && (
+                                <div className="absolute top-full mt-2 left-0 right-auto origin-top-left w-44 min-w-[11rem] max-w-[calc(100vw-2rem)] rounded-xl border border-accent/40 bg-card/95 shadow-xl overflow-hidden z-40 backdrop-blur-sm">
+                                    {(['all', 'classic', 'ranked', 'speed'] as Category[]).map((c) => (
+                                        <button
+                                            key={c}
+                                            onClick={() => {
+                                                setCategory(c);
+                                                setCategoryOpen(false);
+                                            }}
+                                            className={`w-full text-left px-3 py-2 text-sm transition-colors ${
+                                                category === c
+                                                    ? 'bg-neon/15 text-neon'
+                                                    : 'text-accent hover:bg-navy/60'
+                                            }`}
+                                        >
+                                            {categoryLabels[c]}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
 
-                                        {/* Player Info */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className={`font-bold text-base sm:text-lg mb-0.5 transition-colors truncate ${
-                                                i < 3 ? 'text-transparent bg-clip-text bg-gradient-to-r from-neon to-accent' : 'text-accent group-hover:text-neon'
+                <div className="grid md:grid-cols-[240px,1fr] gap-4 md:gap-6">
+                    {/* Left column: quick shortlist similar to the reference layout */}
+                    <div className="rounded-2xl border border-accent/25 bg-navy/60 backdrop-blur p-4 space-y-3">
+                        <p className="text-xs uppercase tracking-[0.18em] text-muted">Quick top</p>
+                        <div className="space-y-2">
+                            {(displayPlayers.slice(0, 8)).map((p, i) => {
+                                const isActive = i === 0;
+                                return (
+                                    <div
+                                        key={p.username}
+                                        className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
+                                            isActive
+                                                ? 'border-neon/50 bg-neon/10 text-neon'
+                                                : 'border-accent/25 bg-card/60 text-accent'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className={`h-7 w-7 flex items-center justify-center rounded-md text-xs font-bold ${
+                                                isActive ? 'bg-neon/20 text-neon border border-neon/40' : 'bg-navy/70 text-accent border border-accent/25'
                                             }`}>
-                                                {p.username}
-                                            </div>
-                                            <div className="flex items-center gap-2 text-xs flex-wrap">
-                                                {p.rank && p.icon && (
-                                                    <span className="px-2 py-0.5 bg-accent/20 border border-accent/50 rounded-full flex items-center gap-1 font-semibold">
-                                                        <span>{p.icon}</span>
-                                                        <span className="text-accent">{p.rank}</span>
-                                                    </span>
-                                                )}
-                                                <span className="text-muted">#{i + 1}</span>
-                                            </div>
+                                                {i + 1}
+                                            </span>
+                                            <span className="truncate">{p.username}</span>
                                         </div>
+                                        <span className="text-[11px] text-muted">{p.score.toLocaleString()} RP</span>
                                     </div>
+                                );
+                            })}
+                            {!displayPlayers.length && !loading && (
+                                <p className="text-muted text-sm">No players yet.</p>
+                            )}
+                            {loading && (
+                                <div className="space-y-2">
+                                    <div className="h-10 rounded-lg bg-navy/50 animate-pulse" />
+                                    <div className="h-10 rounded-lg bg-navy/50 animate-pulse" />
+                                    <div className="h-10 rounded-lg bg-navy/50 animate-pulse" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
-                                    {/* Stats Grid */}
-                                    <div className="grid grid-cols-4 sm:flex sm:items-center gap-2 sm:gap-6 w-full sm:w-auto">
-                                        {/* RP */}
-                                        <div className="text-center sm:min-w-[90px]">
-                                            <div className="text-xs text-muted mb-0.5 font-semibold uppercase tracking-wider">RP</div>
-                                            <div className={`text-xl sm:text-2xl font-black transition-colors ${
-                                                i < 3 ? 'text-transparent bg-clip-text bg-gradient-to-r from-neon to-accent' : 'text-accent group-hover:text-neon'
-                                            }`}>
-                                                {p.score.toLocaleString()}
-                                            </div>
-                                        </div>
+                    {/* Right column: simple, spacious table */}
+                    <div className="rounded-2xl border border-accent/25 bg-navy/50 backdrop-blur overflow-hidden shadow-[0_16px_50px_rgba(0,0,0,0.28)]">
+                        <div className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-accent/20">
+                            <div>
+                                <p className="text-[11px] uppercase tracking-[0.18em] text-muted">Live positions</p>
+                                <h2 className="text-lg font-semibold text-accent">Leaderboard</h2>
+                            </div>
+                            <span className="text-xs text-muted">{displayPlayers.length} registered</span>
+                        </div>
 
-                                        {/* W/L */}
-                                        <div className="text-center sm:min-w-[80px]">
-                                            <div className="text-xs text-muted mb-0.5 font-semibold uppercase tracking-wider">W/L</div>
-                                            <div className="text-base sm:text-lg font-bold flex items-center justify-center gap-1">
-                                                <span className="text-green-400">{p.wins}</span>
-                                                <span className="text-muted text-sm">-</span>
-                                                <span className="text-red-400">{p.losses}</span>
+                        {loading ? (
+                            <div className="flex flex-col items-center gap-2 px-6 py-10 text-muted">
+                                <div className="h-10 w-10 rounded-full border-2 border-accent/50 border-t-neon animate-spin" />
+                                <p className="text-sm">Loading leaderboard...</p>
+                            </div>
+                        ) : displayPlayers.length ? (
+                            <div className="divide-y divide-accent/15">
+                                {displayPlayers.map((p, i) => {
+                                    const rankBadge = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1;
+                                    return (
+                                        <div
+                                            key={p.username}
+                                            className="flex flex-col gap-2 sm:grid sm:grid-cols-[64px,1.4fr,1fr,1fr,0.9fr] sm:items-center px-3 md:px-6 py-3 hover:bg-card/40 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className={`h-10 w-10 rounded-lg border text-sm font-bold flex items-center justify-center ${
+                                                    i === 0 ? 'border-neon/60 text-neon' :
+                                                    i === 1 ? 'border-accent/50 text-accent' :
+                                                    i === 2 ? 'border-orange-400/50 text-orange-200' :
+                                                    'border-accent/25 text-accent'
+                                                }`}>
+                                                    {rankBadge}
+                                                </span>
                                             </div>
-                                        </div>
-
-                                        {/* Win Rate */}
-                                        <div className="text-center sm:min-w-[100px]">
-                                            <div className="text-xs text-muted mb-0.5 font-semibold uppercase tracking-wider">Win Rate</div>
-                                            <div className={`text-base sm:text-lg font-black mb-1 ${
-                                                p.winRate >= 70 ? 'text-green-400' :
-                                                p.winRate >= 60 ? 'text-lime-400' :
-                                                p.winRate >= 50 ? 'text-yellow-400' :
-                                                p.winRate >= 40 ? 'text-orange-400' :
-                                                'text-red-400'
-                                            }`}>
-                                                {p.winRate.toFixed(1)}%
+                                            <div className="min-w-0">
+                                                <p className="font-semibold text-accent truncate">{p.username}</p>
+                                                <div className="flex items-center gap-2 text-[11px] text-muted flex-wrap">
+                                                    {p.rank && p.icon && (
+                                                        <span className="px-2 py-0.5 rounded-full border border-accent/25 bg-card flex items-center gap-1">
+                                                            <span>{p.icon}</span>
+                                                            <span>{p.rank}</span>
+                                                        </span>
+                                                    )}
+                                                    <span className="uppercase tracking-[0.12em] text-neon/80">#{i + 1}</span>
+                                                </div>
+                                                {/* Mobile quick stats */}
+                                                <div className="sm:hidden mt-2 flex items-center justify-between gap-2 text-xs">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-muted uppercase tracking-[0.12em]">RP</span>
+                                                        <span className="text-neon font-bold">{p.score.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className={`font-semibold ${getWinRateColor(p.winRate)}`}>
+                                                        {p.winRate.toFixed(1)}% WR
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="w-full bg-navy/50 rounded-full h-1.5 overflow-hidden">
+                                            <div className="hidden sm:block">
+                                                <p className="text-[11px] uppercase tracking-[0.12em] text-muted">RP</p>
+                                                <p className="text-lg font-bold text-neon">{p.score.toLocaleString()}</p>
+                                            </div>
+                                            <div className="hidden sm:block">
+                                                <p className="text-[11px] uppercase tracking-[0.12em] text-muted">Win rate</p>
+                                                <p className={`text-sm font-semibold ${getWinRateColor(p.winRate)}`}>{p.winRate.toFixed(1)}%</p>
+                                                <div className="mt-1 h-1.5 rounded-full bg-navy/60 overflow-hidden">
+                                                    <div
+                                                        className={`h-full rounded-full ${
+                                                            p.winRate >= 70 ? 'bg-gradient-to-r from-green-500 to-green-400' :
+                                                            p.winRate >= 60 ? 'bg-gradient-to-r from-lime-500 to-lime-400' :
+                                                            p.winRate >= 50 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
+                                                            p.winRate >= 40 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
+                                                            'bg-gradient-to-r from-red-500 to-red-400'
+                                                        }`}
+                                                        style={{ width: `${Math.min(p.winRate, 100)}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="hidden sm:block">
+                                                <p className="text-[11px] uppercase tracking-[0.12em] text-muted">W / L</p>
+                                                <p className="text-sm text-accent font-medium">{p.wins}W · {p.losses}L</p>
+                                                <p className="text-[11px] text-muted">Matches {p.totalGames}</p>
+                                            </div>
+                                            {/* Mobile bottom bar */}
+                                            <div className="sm:hidden flex items-center justify-between gap-3 text-xs text-muted">
+                                                <span>{p.wins}W · {p.losses}L</span>
+                                                <span className="text-muted">Matches {p.totalGames}</span>
+                                            </div>
+                                            <div className="sm:hidden h-1.5 rounded-full bg-navy/60 overflow-hidden">
                                                 <div
-                                                    className={`h-full rounded-full transition-all duration-500 ${
+                                                    className={`h-full rounded-full ${
                                                         p.winRate >= 70 ? 'bg-gradient-to-r from-green-500 to-green-400' :
                                                         p.winRate >= 60 ? 'bg-gradient-to-r from-lime-500 to-lime-400' :
                                                         p.winRate >= 50 ? 'bg-gradient-to-r from-yellow-500 to-yellow-400' :
                                                         p.winRate >= 40 ? 'bg-gradient-to-r from-orange-500 to-orange-400' :
                                                         'bg-gradient-to-r from-red-500 to-red-400'
                                                     }`}
-                                                    style={{ width: `${p.winRate}%` }}
-                                                ></div>
+                                                    style={{ width: `${Math.min(p.winRate, 100)}%` }}
+                                                />
                                             </div>
                                         </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="px-6 py-10 text-center text-muted">
+                                <div className="text-4xl mb-3 opacity-70">🏝️</div>
+                                <p className="text-sm md:text-base">No captains yet. Win the first match and take the #1 spot.</p>
+                            </div>
+                        )}
 
-                                        {/* Total Games */}
-                                        <div className="text-center sm:min-w-[70px]">
-                                            <div className="text-xs text-muted mb-0.5 font-semibold uppercase tracking-wider">Games</div>
-                                            <div className="text-base sm:text-lg font-bold text-accent">
-                                                {p.totalGames}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )) : (
-                                <div className="p-8 sm:p-12 text-center">
-                                    <div className="text-4xl sm:text-5xl mb-3 opacity-50">🏆</div>
-                                    <p className="text-muted text-sm sm:text-base">No champions yet. Be the first!</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {error && (
-                        <div className="p-3 sm:p-4 bg-gradient-to-r from-red-500/20 to-red-500/10 border-t border-red-500/30">
-                            <p className="text-red-400 text-xs sm:text-sm font-semibold">⚠️ {error}</p>
-                        </div>
-                    )}
+                        {error && (
+                            <div className="px-4 md:px-6 py-3 bg-gradient-to-r from-red-500/15 to-red-500/10 border-t border-red-500/25 text-red-300 text-sm">
+                                ⚠️ {error}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </PageContainer>
-    )
+    );
 }
