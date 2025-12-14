@@ -11,4 +11,5 @@ public interface LobbyRepository extends MongoRepository<Lobby, String> {
     List<Lobby> findByStatus(String status);
     long countByStatus(String status);
     long countByStatusIgnoreCase(String status);
+    boolean existsByNameIgnoreCase(String name);
 }

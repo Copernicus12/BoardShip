@@ -15,4 +15,5 @@ public interface UserRepository extends MongoRepository<User, String> {
     long countByStatusIgnoreCaseAndLastSeenAfter(String status, Instant lastSeen);
     List<User> findByStatusIgnoreCaseAndLastSeenBefore(String status, Instant lastSeen);
     List<User> findByStatusIgnoreCase(String status);
+    Optional<User> findBySessionToken(String sessionToken);
 }

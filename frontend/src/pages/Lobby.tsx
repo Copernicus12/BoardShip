@@ -139,6 +139,8 @@ export default function Lobby() {
         }
     }, [loadStats]);
 
+    const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
+
     const createLobbyOnServer = async () => {
         setIsCreating(true);
         try {
@@ -155,7 +157,18 @@ export default function Lobby() {
             navigate(`/game/${lobby.id}`);
         } catch (e) {
             console.error('Create failed', e);
-            alert('Failed to create lobby');
+            const status = (e as any)?.response?.status;
+            if (status === 409) {
+                setErrorDialog({
+                    open: true,
+                    message: 'Cannot create lobby: a waiting lobby already uses this name. Please pick another name.'
+                });
+            } else {
+                setErrorDialog({
+                    open: true,
+                    message: 'Unable to create lobby right now. Please try again.'
+                });
+            }
         } finally {
             setIsCreating(false);
         }
@@ -460,6 +473,23 @@ export default function Lobby() {
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {errorDialog.open && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/60 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-2xl border border-accent bg-card/95 backdrop-blur p-6 shadow-xl">
+                        <h3 className="text-lg font-bold text-accent mb-2">Cannot create lobby</h3>
+                        <p className="text-sm text-muted mb-4">{errorDialog.message}</p>
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => setErrorDialog({ open: false, message: '' })}
+                                className="px-4 py-2 rounded-lg bg-neon/20 text-neon border border-neon/40 hover:bg-neon/30 transition"
+                            >
+                                Close
+                            </button>
                         </div>
                     </div>
                 </div>

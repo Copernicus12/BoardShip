@@ -21,6 +21,7 @@ public class User {
     private String status; // online/offline
     private Instant lastSeen;
     private String themePreference;
+    private String sessionToken; // last issued session for single-login enforcement
 
     @Builder.Default
     private Integer rankingPoints = 0; // RP for ranked games

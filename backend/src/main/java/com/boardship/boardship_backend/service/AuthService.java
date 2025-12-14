@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -16,7 +17,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    private static final long ONLINE_TIMEOUT_SECONDS = 60;
+    public static final long ONLINE_TIMEOUT_SECONDS = 5;
     private static final long REFRESH_MIN_INTERVAL_SECONDS = 20;
 
     public User register(User user) {
@@ -27,6 +28,7 @@ public class AuthService {
         user.setRole("USER");
         user.setStatus("online");
         user.setLastSeen(Instant.now());
+        user.setSessionToken(UUID.randomUUID().toString());
         return userRepository.save(user);
     }
 
@@ -36,6 +38,7 @@ public class AuthService {
                 .map(user -> {
                     user.setStatus("online");
                     user.setLastSeen(Instant.now());
+                    user.setSessionToken(UUID.randomUUID().toString()); // invalidate previous sessions
                     return userRepository.save(user);
                 });
     }
@@ -78,5 +81,13 @@ public class AuthService {
                 userRepository.save(user);
             }
         });
+    }
+
+    public boolean hasActiveSession(User user) {
+        if (user == null) return false;
+        Instant lastSeen = user.getLastSeen();
+        return "online".equalsIgnoreCase(user.getStatus()) &&
+                lastSeen != null &&
+                lastSeen.isAfter(Instant.now().minusSeconds(ONLINE_TIMEOUT_SECONDS));
     }
 }

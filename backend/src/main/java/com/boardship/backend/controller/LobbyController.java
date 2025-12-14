@@ -96,6 +96,10 @@ public class LobbyController {
 
     @PostMapping
     public ResponseEntity<Lobby> createLobby(@RequestBody Lobby lobby) {
+        // prevent duplicate names (case-insensitive)
+        if (lobby.getName() != null && lobbyRepository.existsByNameIgnoreCase(lobby.getName().trim())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
         // set defaults
         if (lobby.getStatus() == null) lobby.setStatus("waiting");
         if (lobby.getCreatedAt() == null) lobby.setCreatedAt(Instant.now());

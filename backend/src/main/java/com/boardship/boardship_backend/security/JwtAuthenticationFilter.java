@@ -2,6 +2,7 @@ package com.boardship.backend.security;
 
 import com.boardship.backend.repository.UserRepository;
 import com.boardship.backend.service.AuthService;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,8 +10,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -41,22 +40,26 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         try {
             String jwt = authHeader.substring(7);
-            String userEmail = jwtService.extractSubject(jwt);
+            Claims claims = jwtService.parse(jwt);
+            String userEmail = claims.getSubject();
+            String sessionId = claims.get("sid", String.class);
 
             if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                // Load user from database
                 userRepository.findByEmail(userEmail).ifPresent(user -> {
+                    // validate single active session
+                    if (user.getSessionToken() == null || sessionId == null || !sessionId.equals(user.getSessionToken())) {
+                        // stale token, refuse auth
+                        return;
+                    }
+
                     authService.refreshLastSeen(userEmail, true);
 
-                    // Create authentication token
                     UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                             userEmail,
                             null,
-                            new ArrayList<>()  // authorities/roles - empty for now
+                            new ArrayList<>()
                     );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                    // Set authentication in security context
                     SecurityContextHolder.getContext().setAuthentication(authToken);
                 });
             }
