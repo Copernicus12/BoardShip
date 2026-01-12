@@ -1,0 +1,56 @@
+@startuml components.puml
+skinparam componentStyle rectangle
+skinparam linetype ortho
+skinparam shadowing false
+
+actor "Player" as player
+
+package "Frontend" {
+  [Web UI (React)] as web_ui
+  [Static Assets] as assets
+  [WebSocket Client] as ws_client
+}
+
+package "Backend" {
+  [Spring Boot API] as api
+  [Auth Controller] as auth_controller
+  [Game Controller] as game_controller
+  [Lobby Controller] as lobby_controller
+  [Match Controller] as match_controller
+  [Leaderboard Controller] as leaderboard_controller
+  [User Controller] as user_controller
+  [Auth Service] as auth_service
+  [User Repository] as user_repo
+  [Lobby Repository] as lobby_repo
+  [Match Repository] as match_repo
+  [GameState Repository] as gamestate_repo
+}
+
+database "MongoDB" as mongo
+
+player --> web_ui : HTTP(S)
+web_ui --> assets : Load
+web_ui --> api : REST
+web_ui --> ws_client : Realtime
+ws_client --> api : WebSocket
+
+api --> auth_controller
+api --> game_controller
+api --> lobby_controller
+api --> match_controller
+api --> leaderboard_controller
+api --> user_controller
+
+auth_controller --> auth_service
+auth_controller --> user_repo
+game_controller --> gamestate_repo
+lobby_controller --> lobby_repo
+match_controller --> match_repo
+leaderboard_controller --> match_repo
+user_controller --> user_repo
+
+user_repo --> mongo
+lobby_repo --> mongo
+match_repo --> mongo
+gamestate_repo --> mongo
+@enduml

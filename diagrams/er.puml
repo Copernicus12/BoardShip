@@ -1,0 +1,84 @@
+@startuml er.puml
+hide circle
+skinparam linetype ortho
+scale 0.8
+
+entity "User" as user {
+  * id : String
+  --
+  username : String
+  email : String
+  password : String
+  role : String
+  status : String
+  lastSeen : Instant
+  themePreference : String
+  sessionToken : String
+  rankingPoints : Integer
+}
+
+entity "Lobby" as lobby {
+  * id : String
+  --
+  name : String
+  hostId : String
+  hostName : String
+  mode : String
+  maxPlayers : int
+  currentPlayers : int
+  status : String
+  createdAt : Instant
+}
+
+entity "Match" as match {
+  * id : String
+  --
+  playerId : String
+  playerUsername : String
+  opponentId : String
+  opponentUsername : String
+  mode : String
+  result : String
+  score : String
+  pointsChange : Integer
+  durationSeconds : Integer
+  playedAt : Instant
+}
+
+entity "GameState" as game_state {
+  * id : String
+  --
+  player1Id : String
+  player2Id : String
+  player1Name : String
+  player2Name : String
+  gamePhase : String
+  currentTurn : String
+  gameMode : String
+  turnStartedAt : Instant
+  player1RpChange : Integer
+  player2RpChange : Integer
+  player1Ships : List<Map>
+  player2Ships : List<Map>
+  player1Ready : boolean
+  player2Ready : boolean
+  player1Attacks : List<Map>
+  player2Attacks : List<Map>
+  winner : String
+  loser : String
+  winReason : String
+  gameOverMessage : String
+  winnerRpChange : Integer
+  loserRpChange : Integer
+  createdAt : Instant
+  updatedAt : Instant
+}
+
+lobby --> user : hostId
+match --> user : playerId
+match --> user : opponentId
+game_state --> user : player1Id
+game_state --> user : player2Id
+game_state --> user : winner
+game_state --> user : loser
+@enduml

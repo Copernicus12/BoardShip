@@ -1,0 +1,39 @@
+@startuml sequence_diagram.puml
+skinparam linetype ortho
+skinparam shadowing false
+
+actor Player as player
+participant "Browser (Web UI)" as browser
+participant "Spring Boot API" as api
+database "MongoDB" as mongo
+
+== Login ==
+player -> browser : Submit login form
+browser -> api: POST /auth/login
+api -> mongo : Find user by email
+mongo --> api : User document
+api --> browser : Auth token + profile
+browser --> player : Login success
+
+== Create Lobby ==
+player -> browser : Create lobby
+browser -> api : POST /lobbies
+api -> mongo : Insert lobby
+mongo --> api : Lobby created
+api --> browser : Lobby data
+browser --> player : Lobby created
+
+== Join Game ==
+player -> browser : Join lobby
+browser -> api : POST /lobbies/{id}/join
+api -> mongo : Update lobby players
+mongo --> api : Updated lobby
+api --> browser : Lobby state
+
+== Play Turn ==
+browser -> api : POST /game/attack
+api -> mongo : Update game state
+mongo --> api : Updated game state
+api --> browser : Turn result
+browser --> player : Show result
+@enduml

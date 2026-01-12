@@ -1,0 +1,47 @@
+@startuml deployment.puml
+skinparam linetype ortho
+skinparam shadowing false
+
+node "Client Device" as client {
+  [Browser] as browser
+}
+
+cloud "Internet" as internet
+node "CDN / Static Hosting" as cdn {
+  [Static Web App] as web_app
+  [Static Assets] as assets
+}
+
+node "Backend Host" as backend_host {
+  [Load Balancer] as lb
+  [Spring Boot API] as api
+  [WebSocket Endpoint] as ws
+  [Auth Service] as auth_service
+}
+
+node "Observability" as obs {
+  [Logs] as logs
+  [Metrics] as metrics
+}
+
+node "Database" as db_node {
+  database "MongoDB" as mongo
+}
+
+browser --> internet : HTTPS
+internet --> cdn : Route
+cdn --> web_app : Serve UI
+cdn --> assets : Serve assets
+
+browser --> lb : HTTPS / WebSocket
+lb --> api : HTTPS
+lb --> ws : WebSocket
+web_app --> api : API Base URL
+
+api --> auth_service
+api --> mongo : MongoDB Driver
+ws --> api : Session/State
+
+api --> logs
+api --> metrics
+@enduml
